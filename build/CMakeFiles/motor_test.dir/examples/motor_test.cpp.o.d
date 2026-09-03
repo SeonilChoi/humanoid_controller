@@ -173,6 +173,7 @@ CMakeFiles/motor_test.dir/examples/motor_test.cpp.o: \
  /usr/include/c++/15/bits/basic_ios.tcc \
  /usr/include/c++/15/bits/ostream.tcc /usr/include/c++/15/istream \
  /usr/include/c++/15/bits/istream.tcc \
+ /home/csi/humanoid_controller/hardware/motor/include/motor/core/motor_interface.hpp \
  /home/csi/humanoid_controller/hardware/motor/include/motor/motor_manager.hpp \
  /usr/include/c++/15/mutex /usr/include/c++/15/bits/std_mutex.h \
  /usr/include/c++/15/bits/unique_lock.h /usr/include/c++/15/memory \
@@ -199,6 +200,5 @@ CMakeFiles/motor_test.dir/examples/motor_test.cpp.o: \
  /usr/include/c++/15/bits/enable_special_members.h \
  /usr/include/c++/15/bits/node_handle.h \
  /usr/include/c++/15/bits/erase_if.h \
- /home/csi/humanoid_controller/hardware/motor/include/motor/core/motor_interface.hpp \
  /home/csi/humanoid_controller/hardware/motor/include/motor/core/motor_master.hpp \
  /home/csi/humanoid_controller/hardware/motor/include/motor/core/motor_driver.hpp

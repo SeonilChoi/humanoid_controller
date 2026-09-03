@@ -24,6 +24,8 @@ struct motor_state_t {
     double position{};
     double velocity{};
     double torque{};
+    double temperature{};
+    uint8_t error{};
 };
 
 } // namespace motor_interface

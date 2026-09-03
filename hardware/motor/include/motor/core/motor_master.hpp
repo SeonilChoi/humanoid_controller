@@ -12,12 +12,12 @@ namespace motor_interface {
 
 class MotorMaster {
 public:
-    explicit MotorMaster(const uint32_t period, const uint8_t number_of_motors)
-    : period_(period), number_of_motors_(number_of_motors) {}
+    explicit MotorMaster(const uint32_t period)
+    : period_(period) {}
 
     virtual ~MotorMaster() = default;
 
-    virtual void add_motor(uint8_t id, double gear_ratio, double zero_offset) = 0;
+    virtual void add_motor(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution) = 0;
 
     virtual void initialize() = 0;
 
@@ -27,8 +27,6 @@ public:
 
 protected:
     const uint32_t period_;
-
-    const uint8_t number_of_motors_;
 
     std::unordered_map<uint8_t, std::unique_ptr<MotorDriver>> drivers_;
 };

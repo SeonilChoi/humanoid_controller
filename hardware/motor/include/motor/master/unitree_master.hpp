@@ -21,14 +21,12 @@
 namespace unitree {
 
 constexpr speed_t UNITREE_BAUDRATE = B4000000;
-constexpr std::size_t TX_PACKET_SIZE = 17;
-constexpr std::size_t RX_PACKET_SIZE = 16;
-constexpr auto TIMEOUT = std::chrono::microseconds(200);
+constexpr auto TIMEOUT = std::chrono::microseconds(5000);
 
 class UnitreeMaster : public motor_interface::MotorMaster {
 public:
-    UnitreeMaster(uint32_t period, uint8_t number_of_motors, const std::string& device)
-    : motor_interface::MotorMaster(period, number_of_motors), device_(device) {}
+    UnitreeMaster(uint32_t period, const std::string& device)
+    : motor_interface::MotorMaster(period), device_(device) {}
 
     virtual ~UnitreeMaster() {
         if (fd_ >= 0) {
@@ -37,21 +35,32 @@ public:
         }
     }
 
-    void add_motor(uint8_t id, double gear_ratio, double zero_offset) override {
-        drivers_[id] = std::make_unique<unitree::UnitreeDriver>(gear_ratio, zero_offset);
+    void add_motor(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution) override {
+        drivers_[id] = std::make_unique<unitree::UnitreeDriver>(id, gear_ratio, zero_offset, pulse_per_revolution);
     }
 
     void initialize() override {
-        fd_ = ::open(device_.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+        fd_ = ::open(device_.c_str(), O_RDWR | O_NOCTTY);
         if (fd_ < 0) throw std::runtime_error("[UnitreeMaster::initialize] Failed to open serial port.");
 
         termios tio{};
-        tio.c_cflag = UNITREE_BAUDRATE | CS8 | CLOCAL | CREAD;
-        tio.c_iflag = IGNPAR;
-        tio.c_oflag = 0;
-        tio.c_lflag = 0;
+        if (::tcgetattr(fd_, &tio) != 0) throw std::runtime_error("[UnitreeMaster::initialize] tcgetattr failed.");
+
+        ::cfmakeraw(&tio);
+
+        tio.c_cflag |= CLOCAL | CREAD;
+        tio.c_cflag &= ~PARENB;
+        tio.c_cflag &= ~CSTOPB;
+        tio.c_cflag &= ~CSIZE;
+        tio.c_cflag |= CS8;
+
+        if (::cfsetispeed(&tio, UNITREE_BAUDRATE) != 0 ||
+            ::cfsetospeed(&tio, UNITREE_BAUDRATE) != 0) {
+            throw std::runtime_error("[UnitreeMaster::initialize] Failed to set baudrate.");
+        }
+
+        tio.c_cc[VMIN] = 0;
         tio.c_cc[VTIME] = 0;
-        tio.c_cc[VMIN] = 1;
 
         if (::tcflush(fd_, TCIOFLUSH) != 0) throw std::runtime_error("[UnitreeMaster::initialize] Failed to flush serial port.");
 

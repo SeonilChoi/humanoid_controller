@@ -1,7 +1,6 @@
 masters:
   - id: 0
     period: 1000 # microseconds
-    number_of_motors: 1
     type: unitree
     device: /dev/ttyUSB0
 
@@ -10,3 +9,10 @@ masters:
         id: 0
         gear_ratio: 6.33
         zero_offset: 0.0
+        pulse_per_revolution: 32768
+
+      - index: 1
+        id: 1
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768

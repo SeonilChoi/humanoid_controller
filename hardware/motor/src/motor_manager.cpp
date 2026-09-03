@@ -58,7 +58,6 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
     for (const auto& m : masters) {
         uint8_t master_id = m["id"].as<uint8_t>();
         uint32_t period = m["period"].as<uint32_t>();
-        uint8_t number_of_motors = m["number_of_motors"].as<uint8_t>();
 
         if (masters_.find(master_id) != masters_.end()) {
             throw std::runtime_error("Duplicate master ID found: " + std::to_string(master_id));
@@ -68,11 +67,11 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
         if (type == "unitree") {
             std::string device = m["device"].as<std::string>();
 
-            masters_[master_id] = std::make_unique<unitree::UnitreeMaster>(period, number_of_motors, device);
+            masters_[master_id] = std::make_unique<unitree::UnitreeMaster>(period, device);
         }
 
         YAML::Node motors = m["motors"];
-        if (!motors || !motors.IsSequence() || motors.size() != number_of_motors) {
+        if (!motors || !motors.IsSequence()) {
             throw std::runtime_error("Invalid motors configuration.");
         }
 
@@ -81,8 +80,9 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
             uint8_t motor_id = motor["id"].as<uint8_t>();
             double gear_ratio = motor["gear_ratio"].as<double>();
             double zero_offset = motor["zero_offset"].as<double>();
+            uint32_t pulse_per_revolution = motor["pulse_per_revolution"].as<uint32_t>();
 
-            masters_[master_id]->add_motor(motor_id, gear_ratio, zero_offset);
+            masters_[master_id]->add_motor(motor_id, gear_ratio, zero_offset, pulse_per_revolution);
             
             routes_[master_id].push_back({motor_index, motor_id});
 
@@ -94,6 +94,8 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
 }
 
 void motor_manager::MotorManager::run(uint8_t id) {
+
+    try{
     auto& master = *masters_.at(id);
     const auto& routes = routes_.at(id);
 
@@ -126,5 +128,11 @@ void motor_manager::MotorManager::run(uint8_t id) {
 
         const auto now = std::chrono::steady_clock::now();
         if (next_wakeup < now - cycle) next_wakeup = now;
+    }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[MotorManager::run] " << e.what() << std::endl;
+
+        running_.store(false);
     }
 }
