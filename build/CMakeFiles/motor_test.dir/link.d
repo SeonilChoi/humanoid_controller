@@ -4,6 +4,7 @@ motor_test: \
   /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o \
   CMakeFiles/motor_test.dir/examples/motor_test.cpp.o \
   hardware/motor/libmotor.a \
+  /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/libyaml-cpp.so \
   /usr/lib/gcc/x86_64-linux-gnu/15/libstdc++.so \
   /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/libm.so \
   /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/libm.so \
@@ -42,6 +43,8 @@ motor_test: \
 CMakeFiles/motor_test.dir/examples/motor_test.cpp.o:
 
 hardware/motor/libmotor.a:
+
+/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/libyaml-cpp.so:
 
 /usr/lib/gcc/x86_64-linux-gnu/15/libstdc++.so:
 

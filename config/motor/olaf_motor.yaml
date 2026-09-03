@@ -1,10 +1,12 @@
 masters:
-  - master_id: 0
-    type: unitree_rs485
+  - id: 0
+    period: 1000 # microseconds
+    number_of_motors: 1
+    type: unitree
     device: /dev/ttyUSB0
-    baudrate: 4000000
 
     motors:
-      - motor_id: 0
-        name: left_hip_rotation
+      - index: 0
+        id: 0
         gear_ratio: 6.33
+        zero_offset: 0.0

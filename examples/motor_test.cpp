@@ -1,4 +1,6 @@
 #include <string>
+#include <thread>
+#include <chrono>
 #include <iostream>
 
 #include "motor/motor_manager.hpp"
@@ -15,7 +17,11 @@ int main(int argc, char* argv[])
 
     motor_manager::MotorManager motor_manager(config_file);
 
-    motor_manager.run();
+    motor_manager.start();
 
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    motor_manager.stop();
+    
     return 0;
 }

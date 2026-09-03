@@ -230,6 +230,9 @@ humanoid_controller_IS_TOP_LEVEL:STATIC=ON
 //Value Computed by CMake
 humanoid_controller_SOURCE_DIR:STATIC=/home/csi/humanoid_controller
 
+//The directory containing a CMake configuration file for yaml-cpp.
+yaml-cpp_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/yaml-cpp
+
 
 ########################
 # INTERNAL cache entries
