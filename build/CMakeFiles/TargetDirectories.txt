@@ -1,8 +1,0 @@
-/home/csi/humanoid_controller/build/CMakeFiles/motor_test.dir
-/home/csi/humanoid_controller/build/CMakeFiles/edit_cache.dir
-/home/csi/humanoid_controller/build/CMakeFiles/rebuild_cache.dir
-/home/csi/humanoid_controller/build/hardware/CMakeFiles/edit_cache.dir
-/home/csi/humanoid_controller/build/hardware/CMakeFiles/rebuild_cache.dir
-/home/csi/humanoid_controller/build/hardware/motor/CMakeFiles/motor.dir
-/home/csi/humanoid_controller/build/hardware/motor/CMakeFiles/edit_cache.dir
-/home/csi/humanoid_controller/build/hardware/motor/CMakeFiles/rebuild_cache.dir

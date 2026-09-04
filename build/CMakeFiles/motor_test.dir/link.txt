@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/motor_test.dir/link.d CMakeFiles/motor_test.dir/examples/motor_test.cpp.o -o motor_test  hardware/motor/libmotor.a -lyaml-cpp

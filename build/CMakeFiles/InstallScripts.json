@@ -1,9 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/csi/humanoid_controller/build/cmake_install.cmake",
-		"/home/csi/humanoid_controller/build/hardware/cmake_install.cmake",
-		"/home/csi/humanoid_controller/build/hardware/motor/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
