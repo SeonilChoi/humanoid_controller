@@ -21,6 +21,8 @@ public:
 
     virtual void initialize() = 0;
 
+    virtual void shutdown() = 0;
+
     virtual void update(uint8_t id, const motor_command_t& command, motor_state_t& status) = 0;
 
     uint32_t period() const { return period_; }

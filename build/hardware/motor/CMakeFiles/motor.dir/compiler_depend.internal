@@ -6,7 +6,9 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o
  /home/csi/humanoid_controller/hardware/motor/include/motor/core/motor_driver.hpp
  /home/csi/humanoid_controller/hardware/motor/include/motor/core/motor_interface.hpp
  /home/csi/humanoid_controller/hardware/motor/include/motor/core/motor_master.hpp
+ /home/csi/humanoid_controller/hardware/motor/include/motor/driver/cubemars_driver.hpp
  /home/csi/humanoid_controller/hardware/motor/include/motor/driver/unitree_driver.hpp
+ /home/csi/humanoid_controller/hardware/motor/include/motor/master/cubemars_master.hpp
  /home/csi/humanoid_controller/hardware/motor/include/motor/master/unitree_master.hpp
  /home/csi/humanoid_controller/hardware/motor/include/motor/motor_manager.hpp
  /usr/include/alloca.h
@@ -14,7 +16,11 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o
  /usr/include/asm-generic/errno-base.h
  /usr/include/asm-generic/errno.h
  /usr/include/asm-generic/int-ll64.h
+ /usr/include/asm-generic/ioctl.h
+ /usr/include/asm-generic/ioctls.h
  /usr/include/asm-generic/posix_types.h
+ /usr/include/asm-generic/socket.h
+ /usr/include/asm-generic/sockios.h
  /usr/include/asm-generic/types.h
  /usr/include/c++/15/algorithm
  /usr/include/c++/15/array
@@ -204,16 +210,22 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o
  /usr/include/fcntl.h
  /usr/include/features-time64.h
  /usr/include/features.h
+ /usr/include/linux/can.h
+ /usr/include/linux/can/raw.h
  /usr/include/linux/close_range.h
  /usr/include/linux/errno.h
  /usr/include/linux/falloc.h
+ /usr/include/linux/ioctl.h
  /usr/include/linux/openat2.h
  /usr/include/linux/posix_types.h
  /usr/include/linux/sched/types.h
+ /usr/include/linux/socket.h
+ /usr/include/linux/sockios.h
  /usr/include/linux/stddef.h
  /usr/include/linux/types.h
  /usr/include/locale.h
  /usr/include/math.h
+ /usr/include/net/if.h
  /usr/include/poll.h
  /usr/include/pthread.h
  /usr/include/sched.h
@@ -230,8 +242,12 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o
  /usr/include/wctype.h
  /usr/include/x86_64-linux-gnu/asm/bitsperlong.h
  /usr/include/x86_64-linux-gnu/asm/errno.h
+ /usr/include/x86_64-linux-gnu/asm/ioctl.h
+ /usr/include/x86_64-linux-gnu/asm/ioctls.h
  /usr/include/x86_64-linux-gnu/asm/posix_types.h
  /usr/include/x86_64-linux-gnu/asm/posix_types_64.h
+ /usr/include/x86_64-linux-gnu/asm/socket.h
+ /usr/include/x86_64-linux-gnu/asm/sockios.h
  /usr/include/x86_64-linux-gnu/asm/types.h
  /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h
  /usr/include/x86_64-linux-gnu/bits/byteswap.h
@@ -250,6 +266,8 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o
  /usr/include/x86_64-linux-gnu/bits/fp-logb.h
  /usr/include/x86_64-linux-gnu/bits/getopt_core.h
  /usr/include/x86_64-linux-gnu/bits/getopt_posix.h
+ /usr/include/x86_64-linux-gnu/bits/ioctl-types.h
+ /usr/include/x86_64-linux-gnu/bits/ioctls.h
  /usr/include/x86_64-linux-gnu/bits/iscanonical.h
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h
@@ -269,6 +287,9 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o
  /usr/include/x86_64-linux-gnu/bits/sched.h
  /usr/include/x86_64-linux-gnu/bits/select.h
  /usr/include/x86_64-linux-gnu/bits/setjmp.h
+ /usr/include/x86_64-linux-gnu/bits/sockaddr.h
+ /usr/include/x86_64-linux-gnu/bits/socket.h
+ /usr/include/x86_64-linux-gnu/bits/socket_type.h
  /usr/include/x86_64-linux-gnu/bits/stat.h
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h
@@ -313,6 +334,7 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o
  /usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_iovec.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h
+ /usr/include/x86_64-linux-gnu/bits/types/struct_osockaddr.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h
@@ -342,9 +364,11 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o
  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h
  /usr/include/x86_64-linux-gnu/gnu/stubs.h
  /usr/include/x86_64-linux-gnu/sys/cdefs.h
+ /usr/include/x86_64-linux-gnu/sys/ioctl.h
  /usr/include/x86_64-linux-gnu/sys/poll.h
  /usr/include/x86_64-linux-gnu/sys/select.h
  /usr/include/x86_64-linux-gnu/sys/single_threaded.h
+ /usr/include/x86_64-linux-gnu/sys/socket.h
  /usr/include/x86_64-linux-gnu/sys/ttydefaults.h
  /usr/include/x86_64-linux-gnu/sys/types.h
  /usr/include/yaml-cpp/binary.h

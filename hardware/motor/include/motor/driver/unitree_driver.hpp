@@ -13,6 +13,8 @@ namespace unitree {
 constexpr std::size_t TX_PACKET_SIZE = 17;
 constexpr std::size_t RX_PACKET_SIZE = 16;
 
+
+constexpr uint8_t MODE_LOCK = 0;
 constexpr uint8_t MODE_FOC = 1;
 constexpr uint8_t TIMEOUT_ENABLE = 0;
 
@@ -92,6 +94,27 @@ public:
         (void)timeout;
     }
 
+    std::size_t enable(uint8_t* buffer, std::size_t size) override {
+        return TX_PACKET_SIZE;
+    }
+
+    std::size_t disable(uint8_t* buffer, std::size_t size) override {
+        if (buffer == nullptr) throw std::runtime_error("[UnitreeDriver::disable] Null buffer.");
+
+        if (size < TX_PACKET_SIZE) throw std::runtime_error("[UnitreeDriver::disable] Invalid buffer size.");
+
+        buffer[0] = 0xFE;
+        buffer[1] = 0xEE;
+        buffer[2] = (id_ & 0x0F) | ((MODE_LOCK & 0x07) << 4);
+
+        for (std::size_t i = 3; i < 15; i++) buffer[i] = 0;
+
+        const uint16_t crc = crc_ccitt(0, buffer, 15);
+        write_u16_little_endian(buffer + 15, crc);
+
+        return TX_PACKET_SIZE;
+    }
+
 private:
     static uint16_t crc_ccitt(uint16_t crc, const uint8_t* buffer, std::size_t size) {
         while (size--) {
@@ -109,32 +132,32 @@ private:
         return crc;
     }
 
-    int32_t position(const double& value) override {
+    int32_t position(const double& value) {
         double position = (value + zero_offset_) * gear_ratio_;
         return static_cast<int32_t>(position / (PI * 2) * pulse_per_revolution_);
     }
 
-    int16_t velocity(const double& value) override {
+    int16_t velocity(const double& value) {
         double velocity = value * gear_ratio_;
         return static_cast<int16_t>(clamp(velocity / (PI * 2) * 256.0, -pulse_per_revolution_, pulse_per_revolution_));
     }
 
-    int16_t torque(const double& value) override {
-        double torque = value / gear_ratio_;
+    int16_t torque(const double& value) {
+        const double torque = value / gear_ratio_;
         return static_cast<int16_t>(clamp(torque * 256.0, -pulse_per_revolution_, pulse_per_revolution_));
     }
 
-    double position(const int32_t& value) override {
+    double position(const int32_t& value) {
         double position = static_cast<double>(value) / pulse_per_revolution_ * (PI * 2);
         return position / gear_ratio_ - zero_offset_;
     }
 
-    double velocity(const int16_t& value) override {
+    double velocity(const int16_t& value) {
         double velocity = static_cast<double>(value) / 256.0 * (PI * 2);
         return velocity / gear_ratio_;
     }
 
-    double torque(const int16_t& value) override {
+    double torque(const int16_t& value) {
         const double torque = static_cast<double>(value) / 256.0;
         return torque * gear_ratio_;
     }

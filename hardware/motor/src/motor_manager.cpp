@@ -9,6 +9,7 @@
 
 #include "motor/motor_manager.hpp"
 #include "motor/master/unitree_master.hpp"
+#include "motor/master/cubemars_master.hpp"
 
 motor_manager::MotorManager::MotorManager(const std::string& config_file) {
     load(config_file);
@@ -30,8 +31,15 @@ void motor_manager::MotorManager::stop() {
             thread.join();
         }
     }
-
     threads_.clear();
+
+    for (auto& [id, master] : masters_) {
+        try {
+            master->shutdown();
+        } catch (const std::exception& e) {
+            std::cerr << "[MotorManager::stop] " << e.what() << std::endl;
+        }
+    }
 }
 
 void motor_manager::MotorManager::write(const motor_interface::motor_command_t* command) {
@@ -66,8 +74,10 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
         std::string type = m["type"].as<std::string>();
         if (type == "unitree") {
             std::string device = m["device"].as<std::string>();
-
             masters_[master_id] = std::make_unique<unitree::UnitreeMaster>(period, device);
+        } else if (type == "cubemars") {
+            std::string device = m["device"].as<std::string>();
+            masters_[master_id] = std::make_unique<cubemars::CubemarsMaster>(period, device);
         }
 
         YAML::Node motors = m["motors"];
@@ -132,7 +142,6 @@ void motor_manager::MotorManager::run(uint8_t id) {
     }
     catch (const std::exception& e) {
         std::cerr << "[MotorManager::run] " << e.what() << std::endl;
-
         running_.store(false);
     }
 }

@@ -16,3 +16,21 @@ masters:
         gear_ratio: 6.33
         zero_offset: 0.0
         pulse_per_revolution: 32768
+
+  - id: 1
+    period: 1000
+    type: cubemars
+    device: can0
+
+    motors:
+      - index: 2
+        id: 1
+        gear_ratio: 36.0
+        zero_offset: 0.0
+        pulse_per_revolution: 65536
+
+      - index: 3
+        id: 2
+        gear_ratio: 36.0
+        zero_offset: 0.0
+        pulse_per_revolution: 65536

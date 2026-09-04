@@ -19,6 +19,10 @@ public:
 
     virtual void decode(const uint8_t* buffer, std::size_t size, motor_state_t& state) = 0;
 
+    virtual std::size_t enable(uint8_t* buffer, std::size_t size) = 0;
+
+    virtual std::size_t disable(uint8_t* buffer, std::size_t size) = 0;
+
 protected:
     static double clamp(const double& value, const double& min, const double& max) {
         if (value < min) return min;
@@ -65,17 +69,44 @@ protected:
         return static_cast<int32_t>(read_u32_little_endian(data));
     }
 
-    virtual int32_t position(const double& value) = 0;
+    static void write_u16_big_endian(uint8_t* data, uint16_t value) {
+        data[0] = static_cast<uint8_t>(value >> 8);
+        data[1] = static_cast<uint8_t>(value);
+    }
 
-    virtual int16_t velocity(const double& value) = 0;
+    static void write_s16_big_endian(uint8_t* data, int16_t value) {
+        write_u16_big_endian(data, static_cast<uint16_t>(value));
+    }
 
-    virtual int16_t torque(const double& value) = 0;
+    static void write_u32_big_endian(uint8_t *data, uint32_t value) {
+        data[0] = static_cast<uint8_t>(value >> 24);
+        data[1] = static_cast<uint8_t>(value >> 16);
+        data[2] = static_cast<uint8_t>(value >> 8);
+        data[3] = static_cast<uint8_t>(value);
+    }
 
-    virtual double position(const int32_t& value) = 0;
+    static void write_s32_big_endian(uint8_t *data, int32_t value) {
+        write_u32_big_endian(data, static_cast<uint32_t>(value));
+    }
 
-    virtual double velocity(const int16_t& value) = 0;
+    static uint16_t read_u16_big_endian(const uint8_t* data) {
+        return (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]);
+    }
 
-    virtual double torque(const int16_t& value) = 0;
+    static int16_t read_s16_big_endian(const uint8_t* data) {
+        return static_cast<int16_t>(read_u16_big_endian(data));
+    }
+
+    static uint32_t read_u32_big_endian(const uint8_t* data) {
+        return (static_cast<uint32_t>(data[0]) << 24) |
+               (static_cast<uint32_t>(data[1]) << 16) |
+               (static_cast<uint32_t>(data[2]) << 8) |
+               static_cast<uint32_t>(data[3]);
+    }
+
+    static int32_t read_s32_big_endian(const uint8_t* data) {
+        return static_cast<int32_t>(read_u32_big_endian(data));
+    }
 
     const uint8_t id_;
 

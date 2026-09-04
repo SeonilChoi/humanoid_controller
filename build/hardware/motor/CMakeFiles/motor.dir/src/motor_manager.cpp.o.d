@@ -298,4 +298,24 @@ hardware/motor/CMakeFiles/motor.dir/src/motor_manager.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/termios-misc.h \
  /usr/include/x86_64-linux-gnu/bits/termios-baud.h \
  /usr/include/x86_64-linux-gnu/sys/ttydefaults.h \
- /home/csi/humanoid_controller/hardware/motor/include/motor/driver/unitree_driver.hpp
+ /home/csi/humanoid_controller/hardware/motor/include/motor/driver/unitree_driver.hpp \
+ /home/csi/humanoid_controller/hardware/motor/include/motor/master/cubemars_master.hpp \
+ /usr/include/net/if.h /usr/include/x86_64-linux-gnu/sys/socket.h \
+ /usr/include/x86_64-linux-gnu/bits/socket.h \
+ /usr/include/x86_64-linux-gnu/bits/socket_type.h \
+ /usr/include/x86_64-linux-gnu/bits/sockaddr.h \
+ /usr/include/x86_64-linux-gnu/asm/socket.h \
+ /usr/include/asm-generic/socket.h \
+ /usr/include/x86_64-linux-gnu/asm/sockios.h \
+ /usr/include/asm-generic/sockios.h \
+ /usr/include/x86_64-linux-gnu/bits/types/struct_osockaddr.h \
+ /usr/include/x86_64-linux-gnu/sys/ioctl.h \
+ /usr/include/x86_64-linux-gnu/bits/ioctls.h \
+ /usr/include/x86_64-linux-gnu/asm/ioctls.h \
+ /usr/include/asm-generic/ioctls.h /usr/include/linux/ioctl.h \
+ /usr/include/x86_64-linux-gnu/asm/ioctl.h \
+ /usr/include/asm-generic/ioctl.h /usr/include/linux/sockios.h \
+ /usr/include/x86_64-linux-gnu/bits/ioctl-types.h \
+ /usr/include/linux/can.h /usr/include/linux/socket.h \
+ /usr/include/linux/can/raw.h \
+ /home/csi/humanoid_controller/hardware/motor/include/motor/driver/cubemars_driver.hpp

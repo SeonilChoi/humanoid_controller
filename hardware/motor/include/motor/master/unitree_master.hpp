@@ -67,6 +67,21 @@ public:
         if (::tcsetattr(fd_, TCSANOW, &tio) != 0) throw std::runtime_error("[UnitreeMaster::initialize] Failed to configure serial port.");
     }
 
+    void shutdown() override {
+        for (auto& [id, driver] : drivers_) {
+            uint8_t tx[TX_PACKET_SIZE]{};
+            const std::size_t tx_size = driver->disable(tx, sizeof(tx));
+
+            send_packet(tx, tx_size);
+
+            uint8_t rx[RX_PACKET_SIZE]{};
+            const std::size_t rx_size = receive_packet(rx, sizeof(rx));
+
+            motor_interface::motor_state_t status{};
+            driver->decode(rx, rx_size, status);
+        }
+    }
+
     void update(uint8_t id, const motor_interface::motor_command_t& command, motor_interface::motor_state_t& status) override {
         auto& driver = *drivers_.at(id);
 
