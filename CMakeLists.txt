@@ -8,6 +8,6 @@ find_package(yaml-cpp REQUIRED)
 
 add_subdirectory(hardware)
 
-add_executable(motor_test examples/motor_test.cpp)
+add_executable(motor_manager examples/motor_manager_test.cpp)
 
-target_link_libraries(motor_test PRIVATE motor)
+target_link_libraries(motor_manager PRIVATE motor)

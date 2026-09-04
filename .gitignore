@@ -1,4 +1,4 @@
 /build/*
-!/build/motor_test
+!/build/motor_manager
 
 .vscode/
