@@ -9,5 +9,6 @@
 *.lo
 *.la
 *.out
+*.dpp
 
 .vscode/
