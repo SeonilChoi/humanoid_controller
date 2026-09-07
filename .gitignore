@@ -1,4 +1,5 @@
 /build/*
 !/build/motor_manager
+!/build/sensor_manager
 
 .vscode/

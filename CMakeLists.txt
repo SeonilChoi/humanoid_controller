@@ -9,5 +9,7 @@ find_package(yaml-cpp REQUIRED)
 add_subdirectory(hardware)
 
 add_executable(motor_manager examples/motor_manager_test.cpp)
-
 target_link_libraries(motor_manager PRIVATE motor)
+
+add_executable(sensor_manager examples/sensor_manager_test.cpp)
+target_link_libraries(sensor_manager PRIVATE sensor)

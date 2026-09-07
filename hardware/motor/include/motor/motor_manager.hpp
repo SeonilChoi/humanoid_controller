@@ -19,7 +19,7 @@ class MotorManager {
 public:
     explicit MotorManager(const std::string& config_file);
 
-    virtual ~MotorManager() = default;
+    virtual ~MotorManager();
 
     void start();
 
