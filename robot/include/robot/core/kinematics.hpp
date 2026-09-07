@@ -15,7 +15,13 @@ public:
 
     void update(const Eigen::VectorXd& q);
 
+    pinocchio::JointIndex joint_id(const std::string& name) const;
+
     pinocchio::FrameIndex frame_id(const std::string& name) const;
+
+    int joint_index(pinocchio::JointIndex joint_id) const;
+
+    Eigen::Matrix3d joint_rotation(pinocchio::JointIndex joint_id) const;
 
     Eigen::Vector3d frame_position(pinocchio::FrameIndex frame_id) const;
 

@@ -1,6 +1,0 @@
-name: olaf
-motor_manager_config_file: motor.yaml
-sensor_manager_config_file: sensor.yaml
-urdf_file: olaf.urdf
-joint_names: ["left_hip_rotation", "right_hip_rotation"] # motor index
-sensor_names: ["imu_body"] # sensor_index 
