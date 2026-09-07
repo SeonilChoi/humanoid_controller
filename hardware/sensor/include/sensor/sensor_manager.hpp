@@ -24,8 +24,8 @@ public:
     void stop();
 
     template<typename T>
-    T& sensor(uint8_t id) {
-        auto it = sensors_.find(id);
+    T& sensor(uint8_t index) {
+        auto it = sensors_.find(index);
 
         if (it == sensors_.end()) throw std::runtime_error("[SensorManager::sensor] Sensor not found.");
 
@@ -39,7 +39,7 @@ public:
 private:
     void load(const std::string& config_file);
 
-    void run(uint8_t id);
+    void run(uint8_t index);
 
     std::atomic<bool> running_{false};
 

@@ -1,0 +1,1 @@
+find_packet(yaml-cpp REQUIRED)

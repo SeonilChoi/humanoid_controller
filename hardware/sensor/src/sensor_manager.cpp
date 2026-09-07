@@ -21,8 +21,8 @@ void sensor_manager::SensorManager::start() {
 
     running_.store(true);
 
-    for (auto& [id, sensor] : sensors_) {
-        threads_.emplace(id, std::thread(&SensorManager::run, this, id));
+    for (auto& [index, sensor] : sensors_) {
+        threads_.emplace(index, std::thread(&SensorManager::run, this, index));
     }
 }
 
@@ -31,7 +31,7 @@ void sensor_manager::SensorManager::stop() {
 
     running_.store(false);
 
-    for (auto& [id, thread] : threads_) {
+    for (auto& [index, thread] : threads_) {
         if (thread.joinable()) {
             thread.join();
         }
@@ -39,7 +39,7 @@ void sensor_manager::SensorManager::stop() {
 
     threads_.clear();
 
-    for (auto& [id, sensor] : sensors_) {
+    for (auto& [index, sensor] : sensors_) {
         try {
             sensor->shutdown();
         } catch (const std::exception& e) {
@@ -56,10 +56,10 @@ void sensor_manager::SensorManager::load(const std::string& config_file) {
     if (!sensors || !sensors.IsSequence()) throw std::runtime_error("[SensorManager::load] Invalied sensors configuration");
 
     for (const auto& s : sensors) {
-        const uint8_t sensor_id = s["id"].as<uint8_t>();
+        const uint8_t sensor_index = s["index"].as<uint8_t>();
 
-        if (sensors_.find(sensor_id) != sensors_.end()) {
-            throw std::runtime_error("[SensorManager::load] Duplicate sensor ID found: " + std::to_string(sensor_id));
+        if (sensors_.find(sensor_index) != sensors_.end()) {
+            throw std::runtime_error("[SensorManager::load] Duplicate sensor index found: " + std::to_string(sensor_index));
         }
 
         const std::string sensor = s["sensor"].as<std::string>();
@@ -70,17 +70,17 @@ void sensor_manager::SensorManager::load(const std::string& config_file) {
 
         if (sensor == "imu") {
             if (type == "xsens_mti") {
-                sensors_[sensor_id] = std::make_unique<xsens_mti::XsensMti>(period, device, baudrate);
+                sensors_[sensor_index] = std::make_unique<xsens_mti::XsensMti>(period, device, baudrate);
             }
         }
 
-        sensors_[sensor_id]->initialize();
+        sensors_[sensor_index]->initialize();
     }
 }
 
-void sensor_manager::SensorManager::run(const uint8_t id) {
+void sensor_manager::SensorManager::run(const uint8_t index) {
     try{
-        auto& sensor = *sensors_.at(id);
+        auto& sensor = *sensors_.at(index);
 
         const auto cycle = std::chrono::microseconds(sensor.period());
         auto next_wakeup = std::chrono::steady_clock::now();
