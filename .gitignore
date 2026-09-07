@@ -1,5 +1,13 @@
-/build/*
-!/build/motor_manager
-!/build/sensor_manager
+/build/
+
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.d
+*.lo
+*.la
+*.out
 
 .vscode/

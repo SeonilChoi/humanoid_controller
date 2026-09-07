@@ -1,0 +1,11 @@
+build-essential
+cmake
+pkg-config
+git
+libyaml-cpp-dev
+libeigen3-dev
+can-utils
+iproute2
+ethtool
+minicom
+screen
