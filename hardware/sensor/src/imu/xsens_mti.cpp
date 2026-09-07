@@ -3,9 +3,31 @@
 
 #include "sensor/imu/xsens_mti.hpp"
 
+#include <xstypes/xsbaudrate.h>
 #include <xscommon/journaller.h>
 
 Journaller* gJournal = nullptr;
+
+XsBaudRate to_xsbaudrate(uint32_t baudrate) {
+    switch (baudrate) {
+	case 19200:
+	    return XBR_19k2;
+	case 38400:
+	    return XBR_38k4;
+	case 57600:
+	    return XBR_57k6;
+	case 115200:
+	    return XBR_115k2;
+	case 230400:
+	    return XBR_230k4;
+	case 460800:
+	    return XBR_460k8;
+	case 921600:
+	    return XBR_921k6;
+	default:
+	    throw std::runtime_error("[to_xsbaudrate] Invalied baudrate.");
+    }
+}
 
 xsens_mti::XsensMti::~XsensMti() {
     shutdown();
@@ -18,7 +40,8 @@ void xsens_mti::XsensMti::initialize() {
 
     if (control_ == nullptr) throw std::runtime_error("[XsensMti::initialize] Failed to construct XsControl.");
 
-    XsPortInfo port_info = XsScanner::scanPort(XsString(device_), static_cast<XsBaudRate>(baudrate_));
+    XsPortInfo port_info = XsScanner::scanPort(XsString(device_), to_xsbaudrate(baudrate_));
+
 
     if (port_info.empty()) {
         control_->destruct();

@@ -1,0 +1,18 @@
+masters:
+  - id: 0
+    period: 1000
+    type: cubemars
+    device: can0
+
+    motors:
+      - index: 0
+        id: 1
+        gear_ratio: 36.0
+        zero_offset: 0.0
+        pulse_per_revolution: 65536
+
+      - index: 1
+        id: 2
+        gear_ratio: 36.0
+        zero_offset: 0.0
+        pulse_per_revolution: 65536
