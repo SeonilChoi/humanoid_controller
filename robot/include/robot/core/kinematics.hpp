@@ -15,6 +15,14 @@ public:
 
     void update(const Eigen::VectorXd& q);
 
+    int nframes() const { return model_.nframes; }
+
+    int njoints() const { return model_.njoints; }
+
+    const std::string& frame_name(pinocchio::FrameIndex frame_id) const;
+
+    const std::string& joint_name(pinocchio::JointIndex joint_id) const;
+
     pinocchio::JointIndex joint_id(const std::string& name) const;
 
     pinocchio::FrameIndex frame_id(const std::string& name) const;

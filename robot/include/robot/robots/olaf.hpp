@@ -5,18 +5,14 @@
 
 namespace olaf {
 
-class Olaf : public Robot {
+class Olaf : public robot::Robot {
 public:
     explicit Olaf(const std::string& config_file)
-    : robot::Robot(config_file)
+    : robot::Robot(config_file) {}
 
-    virtual ~Olaf();
+    virtual ~Olaf() = default;
 
-    void start() override;
-
-    void stop() override;
-
-    void observation() override;
+    const std::vector<double>& observation() override;
 
     void control() override;
 };

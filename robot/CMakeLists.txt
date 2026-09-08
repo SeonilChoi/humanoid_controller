@@ -1,1 +1,39 @@
-find_packet(yaml-cpp REQUIRED)
+add_library(kinematics
+    src/kinematics.cpp
+)
+target_include_directories(kinematics
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(kinematics
+    PUBLIC
+        Eigen3::Eigen
+        pinocchio::pinocchio
+)
+
+add_library(robot
+    src/robot.cpp
+)
+target_include_directories(robot
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(robot
+    PUBLIC
+        motor
+        sensor
+        kinematics
+        yaml-cpp
+)
+
+add_library(olaf
+    src/robots/olaf.cpp
+)
+target_include_directories(olaf
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(olaf
+    PUBLIC
+        robot
+)

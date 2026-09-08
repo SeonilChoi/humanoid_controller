@@ -2,6 +2,6 @@ sensors:
   - index: 0
     sensor: imu
     type: xsens_mti
-    device: /dev/ttyUSB1
+    device: /dev/Xsens
     baudrate: 115200
     period: 1000

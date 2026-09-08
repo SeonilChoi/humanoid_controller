@@ -1,0 +1,406 @@
+<?xml version="1.0"?>
+<robot name="olaf">
+
+<link name="pelvis">
+    <inertial>
+        <origin xyz="0.00449 0.0 0.34304" rpy="0 0 0"/>
+        <mass value="4.92214"/>
+        <inertia ixx="0.02546693014" iyy="0.02342460449" izz="0.02847891744" ixy="-0.00001015300" ixz="-0.00067118303" iyz="-0.00000196197"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/pelvis.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/pelvis.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="trunk_frame" type="fixed">
+    <origin xyz="0 0 0.29525" rpy="0 0 0"/>
+    <parent link="pelvis"/>
+    <child link="trunk"/>
+    <axis xyz="0 0 0"/>
+</joint>
+
+<link name="trunk">
+    <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0"/>
+        <inertia ixx="0" iyy="0" izz="0" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+</link>
+
+<joint name="left_hip_yaw" type="revolute">
+    <origin xyz="0 0.070 -0.0066" rpy="0 0 0"/>
+    <parent link="trunk"/>
+    <child link="left_hip_rotation"/>
+    <axis xyz="0 0 -1"/>
+    <limit lower="-0.6" upper="0.6" velocity="30.0" effort="100.0"/>
+</joint>
+
+<link name="left_hip_rotation">
+    <inertial>
+        <origin xyz="-0.04213 0 -0.02278" rpy="0 0 0"/>
+        <mass value="0.09178"/>
+        <inertia ixx="0.00009691337" iyy="0.00013095815" izz="0.00009146557" ixy="-0.00000000014" ixz="0.00003714628" iyz="-0.00000000003"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_hip_rotation.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_hip_rotation.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="left_hip_roll" type="revolute">
+    <origin xyz="-0.06325 0 -0.065" rpy="0 0 0"/>
+    <parent link="left_hip_rotation"/>
+    <child link="left_hip"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="-0.34" upper="0.78" velocity="30.0" effort="100.0"/>
+</joint>
+
+<link name="left_hip">
+    <inertial>
+        <origin xyz="0.02193 -0.01401 0.00003" rpy="0 0 0"/>
+        <mass value="1.1636"/>
+        <inertia ixx="0.00125733820" iyy="0.00299045765" izz="0.00291791266" ixy="-0.00061060898" ixz="0.00001000142" iyz="-0.00000214350"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_hip.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_hip.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="left_hip_pitch" type="revolute">
+    <origin xyz="0.06275 -0.0057 0" rpy="0 -0.7854 0"/>
+    <parent link="left_hip"/>
+    <child link="left_thigh"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.78" upper="1.5708" velocity="30.0" effort="100.0"/>
+</joint>
+
+<link name="left_thigh">
+    <inertial>
+        <origin xyz="0.00038 0.00584 -0.03518" rpy="0 0 0"/>
+        <mass value="0.10518"/>
+        <inertia ixx="0.00012630889" iyy="0.00015134070" izz="0.00002742836" ixy="0.00000020712" ixz="0.00000164134" iyz="-0.00000699935"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_thigh.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_thigh.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="left_knee" type="revolute">
+    <origin xyz="0 0.0114 -0.074" rpy="0 1.5708 0"/>
+    <parent link="left_thigh"/>
+    <child link="left_shin"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5708" upper="0.34" velocity="30.0" effort="100.0"/>
+</joint>
+
+<link name="left_shin">
+    <inertial>
+        <origin xyz="0.00028 0.01857 -0.00241" rpy="0 0 0"/>
+        <mass value="0.59922"/>
+        <inertia ixx="0.00050672924" iyy="0.00077273815" izz="0.00039664807" ixy="0.00000382291" ixz="0.00000237844" iyz="0.00003318102"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_shin.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_shin.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="left_ankle_pitch" type="revolute">
+    <origin xyz="0 -0.0024 -0.074" rpy="0 -0.7854 0"/>
+    <parent link="left_shin"/>
+    <child link="left_foot_rotation"/>
+    <axis xyz="0 -1 0"/>
+    <limit lower="-2.3562" upper="0.7854" velocity="5.0" effort="100.0"/>
+</joint>
+
+<link name="left_foot_rotation">
+    <inertial>
+        <origin xyz="0.00012 -0.01381 -0.03018" rpy="0 0 0"/>
+        <mass value="0.72495"/>
+        <inertia ixx="0.00104123346" iyy="0.00093006085" izz="0.00041813113" ixy="-0.00000656413" ixz="0.00000112185" iyz="-0.00024980477"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_foot_rotation.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_foot_rotation.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="left_ankle_roll" type="revolute">
+    <origin xyz="-0.0255 0.002 -0.060" rpy="0 0 0"/>
+    <parent link="left_foot_rotation"/>
+    <child link="left_foot_link"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="-0.7854" upper="0.7854" velocity="5.0" effort="100.0"/>
+</joint>
+
+<link name="left_foot_link">
+    <inertial>
+        <origin xyz="0.01710 0 -0.03615" rpy="0 0 0"/>
+        <mass value="0.13745"/>
+        <inertia ixx="0.00006932451" iyy="0.00011746052" izz="0.00011985511" ixy="-0.00000000092" ixz="-0.00002302096" iyz="0.00000000017"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_foot.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/left_foot.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="left_foot_frame" type="fixed">
+    <origin xyz="0.026 0 -0.051" rpy="0 0 0"/>
+    <parent link="left_foot_link"/>
+    <child link="left_foot"/>
+    <axis xyz="0 0 0"/>
+</joint>
+
+<link name="left_foot">
+    <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0"/>
+        <inertia ixx="0" iyy="0" izz="0" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+</link>
+
+
+<joint name="right_hip_yaw" type="revolute">
+    <origin xyz="0 -0.070 -0.0066" rpy="0 0 3.141592"/>
+    <parent link="trunk"/>
+    <child link="right_hip_rotation"/>
+    <axis xyz="0 0 -1"/>
+    <limit lower="-0.6" upper="0.6" velocity="30.0" effort="100.0"/>
+</joint>
+
+<link name="right_hip_rotation">
+    <inertial>
+        <origin xyz="-0.04213 0 -0.02278" rpy="0 0 0"/>
+        <mass value="0.09178"/>
+        <inertia ixx="0.00009691337" iyy="0.00013095815" izz="0.00009146557" ixy="-0.00000000014" ixz="0.00003714628" iyz="-0.00000000003"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_hip_rotation.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_hip_rotation.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="right_hip_roll" type="revolute">
+    <origin xyz="-0.06325 0 -0.065" rpy="0 0 0"/>
+    <parent link="right_hip_rotation"/>
+    <child link="right_hip"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="-0.78" upper="0.34" velocity="30.0" effort="100.0"/>
+</joint>
+
+<link name="right_hip">
+    <inertial>
+        <origin xyz="0.02193 -0.01401 0.00003" rpy="0 0 0"/>
+        <mass value="1.1636"/>
+        <inertia ixx="0.00125733820" iyy="0.00299045765" izz="0.00291791266" ixy="-0.00061060898" ixz="0.00001000142" iyz="-0.00000214350"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_hip.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_hip.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="right_hip_pitch" type="revolute">
+    <origin xyz="0.06275 -0.0057 0" rpy="0 -0.7854 0"/>
+    <parent link="right_hip"/>
+    <child link="right_thigh"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.78" upper="1.5708" velocity="30.0" effort="100.0"/>
+</joint>
+
+<link name="right_thigh">
+    <inertial>
+        <origin xyz="0.00038 0.00584 -0.03518" rpy="0 0 0"/>
+        <mass value="0.10518"/>
+        <inertia ixx="0.00012630889" iyy="0.00015134070" izz="0.00002742836" ixy="0.00000020712" ixz="0.00000164134" iyz="-0.00000699935"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_thigh.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_thigh.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="right_knee" type="revolute">
+    <origin xyz="0 0.0114 -0.074" rpy="0 1.5708 0"/>
+    <parent link="right_thigh"/>
+    <child link="right_shin"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5708" upper="0.34" velocity="30.0" effort="100.0"/>
+</joint>
+
+<link name="right_shin">
+    <inertial>
+        <origin xyz="0.00028 0.01857 -0.00241" rpy="0 0 0"/>
+        <mass value="0.59922"/>
+        <inertia ixx="0.00050672924" iyy="0.00077273815" izz="0.00039664807" ixy="0.00000382291" ixz="0.00000237844" iyz="0.00003318102"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_shin.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_shin.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="right_ankle_pitch" type="revolute">
+    <origin xyz="0 -0.0024 -0.074" rpy="0 -0.7854 0"/>
+    <parent link="right_shin"/>
+    <child link="right_foot_rotation"/>
+    <axis xyz="0 -1 0"/>
+    <limit lower="-2.3562" upper="0.7854" velocity="5.0" effort="100.0"/>
+</joint>
+
+<link name="right_foot_rotation">
+    <inertial>
+        <origin xyz="0.00012 -0.01381 -0.03018" rpy="0 0 0"/>
+        <mass value="0.72495"/>
+        <inertia ixx="0.00104123346" iyy="0.00093006085" izz="0.00041813113" ixy="-0.00000656413" ixz="0.00000112185" iyz="-0.00024980477"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_foot_rotation.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_foot_rotation.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="right_ankle_roll" type="revolute">
+    <origin xyz="-0.0255 0.002 -0.060" rpy="0 0 0"/>
+    <parent link="right_foot_rotation"/>
+    <child link="right_foot_link"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="-0.7854" upper="0.7854" velocity="5.0" effort="100.0"/>
+</joint>
+
+<link name="right_foot_link">
+    <inertial>
+        <origin xyz="0.01710 0 -0.03615" rpy="0 0 0"/>
+        <mass value="0.13745"/>
+        <inertia ixx="0.00006932451" iyy="0.00011746052" izz="0.00011985511" ixy="-0.00000000092" ixz="-0.00002302096" iyz="0.00000000017"/>
+    </inertial>
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_foot.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="meshes/right_foot.STL" scale="0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+</link>
+
+<joint name="right_foot_frame" type="fixed">
+    <origin xyz="0.026 0 -0.051" rpy="0 0 0"/>
+    <parent link="right_foot_link"/>
+    <child link="right_foot"/>
+    <axis xyz="0 0 0"/>
+</joint>
+
+<link name="right_foot">
+    <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0"/>
+        <inertia ixx="0" iyy="0" izz="0" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+</link>
+
+</robot>
