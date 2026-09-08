@@ -23,15 +23,14 @@ int main(int argc, char* argv[])
     command[0].position = 1.5;
     command[0].velocity = 0.0;
     command[0].torque = 0.0;
-    command[0].kp = 0.1;
-    command[0].kd = 0.1;
+    command[0].kp = 10.0;
+    command[0].kd = 5.0;
 
     command[1].position = 0.0;
     command[1].velocity = 0.0;
     command[1].torque = 0.0;
-    command[1].kp = 0.1;
-    command[1].kd = 0.1;
-
+    command[1].kp = 10.0;
+    command[1].kd = 5.0;
 
     motor_interface::motor_state_t status[2]{};
 
