@@ -56,7 +56,8 @@ void sensor_manager::SensorManager::load(const std::string& config_file) {
     if (!sensors || !sensors.IsSequence()) throw std::runtime_error("[SensorManager::load] Invalied sensors configuration");
 
     for (const auto& s : sensors) {
-        const uint8_t sensor_index = s["index"].as<uint8_t>();
+        const unsigned int idx = s["index"].as<unsigned int>();
+	const uint8_t sensor_index = static_cast<uint8_t>(idx);
 
         if (sensors_.find(sensor_index) != sensors_.end()) {
             throw std::runtime_error("[SensorManager::load] Duplicate sensor index found: " + std::to_string(sensor_index));
@@ -71,7 +72,7 @@ void sensor_manager::SensorManager::load(const std::string& config_file) {
         if (sensor == "imu") {
             if (type == "xsens_mti") {
                 sensors_[sensor_index] = std::make_unique<xsens_mti::XsensMti>(period, device, baudrate);
-            }
+	    }
         }
 
         sensors_[sensor_index]->initialize();

@@ -4,6 +4,6 @@ add_library(motor
 
 target_include_directories(motor PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-target_link_libraries(motor PRIVATE yaml-cpp)
+target_link_libraries(motor PRIVATE yaml-cpp Threads::Threads)
 
 target_compile_features(motor PUBLIC cxx_std_17)

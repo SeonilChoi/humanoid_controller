@@ -68,7 +68,9 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
     if (!masters || !masters.IsSequence()) throw std::runtime_error("[MotorManager::load] Invalid masters configuration.");
 
     for (const auto& m : masters) {
-        const uint8_t master_id = m["id"].as<uint8_t>();
+        const unsigned int master_id_int = m["id"].as<unsigned int>();
+	const uint8_t master_id = static_cast<uint8_t>(master_id_int);
+        
 
         if (masters_.find(master_id) != masters_.end()) {
             throw std::runtime_error("[MotorManager::load] Duplicate master ID found: " + std::to_string(master_id));
@@ -90,9 +92,13 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
         }
 
         for (const auto& motor : motors) {
-            const uint8_t motor_index = motor["index"].as<uint8_t>();
-            const uint8_t motor_id = motor["id"].as<uint8_t>();
-            const double gear_ratio = motor["gear_ratio"].as<double>();
+	    const unsigned int motor_index_int = motor["index"].as<unsigned int>();
+	    const uint8_t motor_index = static_cast<uint8_t>(motor_index_int);
+
+	    const unsigned int motor_id_int = motor["id"].as<unsigned int>();
+            const uint8_t motor_id = static_cast<uint8_t>(motor_id_int);
+	    
+	    const double gear_ratio = motor["gear_ratio"].as<double>();
             const double zero_offset = motor["zero_offset"].as<double>();
             const uint32_t pulse_per_revolution = motor["pulse_per_revolution"].as<uint32_t>();
 

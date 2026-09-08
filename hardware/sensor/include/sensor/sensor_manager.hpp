@@ -27,7 +27,7 @@ public:
     T& sensor(uint8_t index) {
         auto it = sensors_.find(index);
 
-        if (it == sensors_.end()) throw std::runtime_error("[SensorManager::sensor] Sensor not found.");
+	if (it == sensors_.end()) throw std::runtime_error("[SensorManager::sensor] Sensor not found.");
 
         auto* sensor = dynamic_cast<T*>(it->second.get());
 
