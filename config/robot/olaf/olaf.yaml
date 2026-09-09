@@ -2,35 +2,43 @@ name: olaf
 
 motor_manager_config_file: ../config/hardware/motor/olaf.yaml
 sensor_manager_config_file: ../config/hardware/sensor/xsens_mti.yaml
-
 urdf_file: ../config/robot/olaf/olaf.urdf
 
-joints:
-  - left_hip_yaw
-  - left_hip_roll
-  - left_hip_pitch
-  - left_knee
-  - left_ankle_pitch
-  - left_ankle_roll
-  - right_hip_yaw
-  - right_hip_roll
-  - right_hip_pitch
-  - right_knee
-  - right_ankle_pitch
-  - right_ankle_roll
+motors:
+  - name: left_hip_yaw
+    index: 0
+  - name: left_hip_roll
+    index: 1
+  - name: left_hip_pitch
+    index: 2
+  - name: left_knee
+    index: 3
+  - name: left_ankle_pitch
+    index: 4
+  - name: left_ankle_roll
+    index: 5
+  - name: right_hip_yaw
+    index: 6
+  - name: right_hip_roll
+    index: 7
+  - name: right_hip_pitch
+    index: 8
+  - name: right_knee
+    index: 9
+  - name: right_ankle_pitch
+    index: 10
+  - name: right_ankle_roll
+    index: 11
 
 sensors:
-  imu:
-    name: body
+  - name: imu_body
+    index: 0
     frame: pelvis
-
     translation: [-0.04688, 0.0, 0.31825]
-    orientation: [1.0, 0.0, 0.0, 0.0]
+    orientation: [0.0, 0.0, 0.0, 1.0]
 
-frames:
-  left_foot: left_foot_link
-  right_foot: right_foot_link
-
-toe_offset:
-  left: [0.026, 0.0, -0.051]
-  right: [0.026, 0.0, -0.051]
+foots:
+  - name: left_foot_link
+    offset: [0.026, 0.0, -0.051]
+  - name: right_foot_link
+    offset: [0.026, 0.0, -0.051]

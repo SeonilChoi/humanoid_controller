@@ -31,6 +31,8 @@ public:
 
     Eigen::Matrix3d joint_rotation(pinocchio::JointIndex joint_id) const;
 
+    Eigen::Matrix3d joint_local_rotation(pinocchio::JointIndex joint_id) const;
+
     Eigen::Vector3d frame_position(pinocchio::FrameIndex frame_id) const;
 
     Eigen::Matrix3d frame_rotation(pinocchio::FrameIndex frame_id) const;

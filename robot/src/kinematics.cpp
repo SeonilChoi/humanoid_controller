@@ -57,6 +57,10 @@ Eigen::Matrix3d kinematics::Kinematics::joint_rotation(pinocchio::JointIndex joi
     return data_.oMi[joint_id].rotation();
 }
 
+Eigen::Matrix3d kinematics::Kinematics::joint_local_rotation(pinocchio::JointIndex joint_id) const {
+    return data_.joints[joint_id].M().rotation();
+}
+
 Eigen::Vector3d kinematics::Kinematics::frame_position(pinocchio::FrameIndex frame_id) const {
     return data_.oMf[frame_id].translation();
 }

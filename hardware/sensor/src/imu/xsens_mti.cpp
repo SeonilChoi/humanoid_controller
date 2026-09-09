@@ -95,10 +95,10 @@ void xsens_mti::XsensMti::update() {
     if (packet.containsOrientation()) {
         const XsQuaternion quaternion = packet.orientationQuaternion();
 
-        data.orientation[0] = quaternion.w();
-        data.orientation[1] = quaternion.x();
-        data.orientation[2] = quaternion.y();
-        data.orientation[3] = quaternion.z();
+        data.orientation[0] = quaternion.x();
+        data.orientation[1] = quaternion.y();
+        data.orientation[2] = quaternion.z();
+        data.orientation[3] = quaternion.w();
     }
 
     if (packet.containsCalibratedGyroscopeData()) {
