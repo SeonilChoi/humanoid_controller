@@ -33,6 +33,19 @@ int main(int argc, char* argv[])
                   << data.orientation[2] << " "
                   << data.orientation[3] << std::endl;
 
+        std::cout << "Xsens MTi angular velocity: "
+                  << data.angular_velocity[0] << " "
+                  << data.angular_velocity[1] << " "
+                  << data.angular_velocity[2] << std::endl;
+
+        std::cout << "Xsens MTi linear acceleration: "
+                  << data.linear_acceleration[0] << " "
+                  << data.linear_acceleration[1] << " "
+                  << data.linear_acceleration[2] << std::endl;
+
+        std::cout << "Xsens MTi temperature: "
+                  << data.temperature << std::endl;
+
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 

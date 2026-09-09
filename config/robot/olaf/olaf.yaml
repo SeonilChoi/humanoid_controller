@@ -8,17 +8,17 @@ motors:
   - name: left_hip_yaw
     index: 0
   - name: left_hip_roll
-    index: 1
-  - name: left_hip_pitch
-    index: 2
-  - name: left_knee
-    index: 3
-  - name: left_ankle_pitch
-    index: 4
-  - name: left_ankle_roll
-    index: 5
-  - name: right_hip_yaw
     index: 6
+  - name: left_hip_pitch
+    index: 4
+  - name: left_knee
+    index: 5
+  - name: left_ankle_pitch
+    index: 2
+  - name: left_ankle_roll
+    index: 3
+  - name: right_hip_yaw
+    index: 1
   - name: right_hip_roll
     index: 7
   - name: right_hip_pitch

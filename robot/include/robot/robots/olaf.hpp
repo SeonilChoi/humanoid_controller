@@ -42,6 +42,10 @@ private:
     double gait_phase_{0.0};
 
     double gait_phase_rate_{1.0};
+
+    motor_interface::motor_command_t test_command_[4]{};
+    
+    int test_count_{0};
 };
 
 } // namespace olaf

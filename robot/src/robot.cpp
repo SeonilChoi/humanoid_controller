@@ -37,8 +37,8 @@ void robot::Robot::load(const std::string& config_file) {
     for (const auto& motor : motors) {
         motor_config_t config;
 
+        config.index = static_cast<uint8_t>(motor["index"].as<unsigned int>());
         config.name = motor["name"].as<std::string>();
-        config.index = motor["index"].as<uint8_t>();
 
         motors_.push_back(config);
     }
@@ -52,7 +52,7 @@ void robot::Robot::load(const std::string& config_file) {
     for (const auto& sensor : sensors) {
         sensor_config_t config;
 
-        config.index = sensor["index"].as<uint8_t>();
+        config.index = static_cast<uint8_t>(sensor["index"].as<unsigned int>());
         config.name = sensor["name"].as<std::string>();
         config.frame = sensor["frame"].as<std::string>();
         config.translation = sensor["translation"].as<std::vector<double>>();

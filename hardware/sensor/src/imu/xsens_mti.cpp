@@ -1,9 +1,10 @@
-#include <iostream>
 #include <stdexcept>
 
 #include "sensor/imu/xsens_mti.hpp"
 
 #include <xstypes/xsbaudrate.h>
+#include <xstypes/xsdataidentifier.h>
+#include <xstypes/xsoutputconfigurationarray.h>
 #include <xscommon/journaller.h>
 
 Journaller* gJournal = nullptr;
@@ -67,6 +68,33 @@ void xsens_mti::XsensMti::initialize() {
         throw std::runtime_error("[XsensMti::initialize] Failed to get device handle.");
     }
 
+    if (!device_handle_->gotoConfig()) {
+        device_handle_ = nullptr;
+
+        control_->close();
+        control_->destruct();
+        control_ = nullptr;
+
+        throw std::runtime_error("[XsensMti::initialize] Failed to enter config mode.");
+    }
+
+    constexpr uint16_t kMaxFrequency = 0xFFFF;
+
+    XsOutputConfigurationArray output_config;
+    output_config.push_back(XsOutputConfiguration(XDI_Quaternion, kMaxFrequency));
+    output_config.push_back(XsOutputConfiguration(XDI_RateOfTurn, kMaxFrequency));
+    output_config.push_back(XsOutputConfiguration(XDI_Acceleration, kMaxFrequency));
+
+    if (!device_handle_->setOutputConfiguration(output_config)) {
+        device_handle_ = nullptr;
+
+        control_->close();
+        control_->destruct();
+        control_ = nullptr;
+
+        throw std::runtime_error("[XsensMti::initialize] Failed to set output configuration.");
+    }
+
     device_handle_->addCallbackHandler(&callback_);
 
     if (!device_handle_->gotoMeasurement()) {
@@ -90,15 +118,19 @@ void xsens_mti::XsensMti::update() {
 
     if (!callback_.read(packet)) return;
 
-    sensor_interface::imu_data_t data{};
+    sensor_interface::imu_data_t data;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        data = data_;
+    }
 
     if (packet.containsOrientation()) {
         const XsQuaternion quaternion = packet.orientationQuaternion();
 
-        data.orientation[0] = quaternion.x();
-        data.orientation[1] = quaternion.y();
-        data.orientation[2] = quaternion.z();
-        data.orientation[3] = quaternion.w();
+        data.orientation[0] = quaternion.w();
+        data.orientation[1] = quaternion.x();
+        data.orientation[2] = quaternion.y();
+        data.orientation[3] = quaternion.z();
     }
 
     if (packet.containsCalibratedGyroscopeData()) {

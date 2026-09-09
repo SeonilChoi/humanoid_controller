@@ -52,13 +52,42 @@ olaf::Olaf::Olaf(const std::string& config_file)
         foot_frame_ids_.push_back(kinematics_->frame_id(foot.name));
         foot_toe_offsets_.push_back(Eigen::Vector3d(foot.offset.data()));
     }
+
+    test_command_[0].position = 1.5;
+    test_command_[0].velocity = 0.0;
+    test_command_[0].torque = 0.0;
+    test_command_[0].kp = 0.1;
+    test_command_[0].kd = 0.1;
+
+    test_command_[1].position = 0.0;
+    test_command_[1].velocity = 0.0;
+    test_command_[1].torque = 0.0;
+    test_command_[1].kp = 0.1;
+    test_command_[1].kd = 0.1;
+
+    test_command_[2].position = 1.5;
+    test_command_[2].velocity = 0.0;
+    test_command_[2].torque = 0.0;
+    test_command_[2].kp = 10.0;
+    test_command_[2].kd = 5.0;
+
+    test_command_[3].position = 0.0;
+    test_command_[3].velocity = 0.0;
+    test_command_[3].torque = 0.0;
+    test_command_[3].kp = 10.0;
+    test_command_[3].kd = 5.0;
 }
 
 const std::vector<double>& olaf::Olaf::observation() {
     // read motor status
+    /*
     motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
     motor_manager_->read(motor_status);
+    */
 
+    motor_interface::motor_state_t motor_status[4]{};
+    motor_manager_->read(motor_status);
+    
     // update kinematics with current motor positions
     Eigen::VectorXd joint_positions = Eigen::VectorXd::Zero(NUM_JOINTS);
 
@@ -141,7 +170,7 @@ const std::vector<double>& olaf::Olaf::observation() {
             kinematics_->frame_position(foot_frame_id) +
             kinematics_->frame_rotation(foot_frame_id) * foot_toe_offset;
 
-        append_vector(toe_position, observation_);
+        append_vector(heading_R_root * toe_position, observation_);
     }
 
     const double phase_angle = 2.0 * PI * gait_phase_;
@@ -160,4 +189,16 @@ const std::vector<double>& olaf::Olaf::observation() {
 
 
 void olaf::Olaf::control() {
+    if (test_count_ % 100 == 0) {
+        double tmp = test_command_[1].position;
+        test_command_[1].position = test_command_[0].position;
+        test_command_[0].position = tmp;
+
+        tmp = test_command_[3].position;
+        test_command_[3].position = test_command_[2].position;
+        test_command_[2].position = tmp;
+    }
+    test_count_++;
+
+    motor_manager_->write(test_command_);
 }
