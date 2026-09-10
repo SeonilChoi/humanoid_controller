@@ -10,3 +10,17 @@ EOF
 
 sudo udevadm control --reload-rules
 sudo udevadm trigger
+sleep 1
+
+for dev in /dev/Unitree /dev/CANable /dev/Xsens; do
+    if [[ -e "$dev" ]]; then
+        sudo chmod 777 "$dev"
+    fi
+done
+
+if [[ -e /dev/CANable ]] && command -v slcand >/dev/null 2>&1; then
+    if ! ip link show can1 >/dev/null 2>&1; then
+        sudo slcand -o -c -s8 /dev/CANable can1
+    fi
+    sudo ip link set can1 up
+fi
