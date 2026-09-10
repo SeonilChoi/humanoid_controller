@@ -7,22 +7,22 @@ It includes motor control, sensor reading, joystick input, and robot-level contr
 
 ### Motor drivers
 
-| Status            | Hardware Name |
-| ----------------- | ------------- |
-| :heavy_check_mark | `Unitree`     |
-| :heavy_check_mark | `Cubemars`    |
+| Status             | Hardware Name |
+| ------------------ | ------------- |
+| :heavy_check_mark: | `Unitree`     |
+| :heavy_check_mark: | `Cubemars`    |
 
 ### Sensors
 
-| Status            | Hardware Name  |
-| ----------------- | -------------- |
-| :heavy_check_mark | `Xsense MTi`   |
+| Status             | Hardware Name  |
+| ------------------ | -------------- |
+| :heavy_check_mark: | `Xsense MTi`   |
 
 ### Joysticks
 
-| Status            | Hardware Name  |
-| ----------------- | -------------- |
-| :heavy_check_mark | `Dualsense`    |
+| Status             | Hardware Name  |
+| ------------------ | -------------- |
+| :heavy_check_mark: | `Dualsense`    |
 
 ## Clone
 ```bash
