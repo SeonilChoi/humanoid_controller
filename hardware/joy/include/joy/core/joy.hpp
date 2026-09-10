@@ -9,8 +9,8 @@ namespace joy_interface {
 
 class Joy {
 public:
-    explicit Joy(const std::string& device, uint32_t period)
-    : device_(device), period_(period) {}
+    explicit Joy(const std::string& device, uint32_t period, const std::string& axis_layout)
+    : device_(device), period_(period), axis_layout_(axis_layout) {}
 
     virtual ~Joy() = default;
 
@@ -30,6 +30,8 @@ protected:
     const std::string device_;
 
     const uint32_t period_;
+
+    const std::string axis_layout_;
 };
 
 } // namespace joy_interface

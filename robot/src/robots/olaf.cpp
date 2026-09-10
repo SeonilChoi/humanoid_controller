@@ -188,8 +188,8 @@ const std::vector<double>& olaf::Olaf::observation() {
     joy_handler_->read(joy_data);
 
     command_[0] = joy_data.stick_ly; // vx
-    command_[1] = joy_data.stick_lx; // vy
-    command_[2] = joy_data.l2_analog != 0.0 ? joy_data.l2_analog : -joy_data.r2_analog; // w
+    command_[1] = -joy_data.stick_lx; // vy
+    command_[2] = -joy_data.stick_rx; // w
 
     // command [101:104]
     observation_.push_back(command_[0] * 0.5);
@@ -198,7 +198,6 @@ const std::vector<double>& olaf::Olaf::observation() {
 
     return observation_;
 }
-
 
 void olaf::Olaf::control() {
     if (test_count_ % 100 == 0) {

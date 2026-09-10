@@ -1,3 +1,4 @@
 type: dualsense
 device: /dev/input/js0
 period: 4000
+axis_layout: generic

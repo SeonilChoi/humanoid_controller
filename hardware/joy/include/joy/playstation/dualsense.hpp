@@ -12,8 +12,8 @@ namespace playstation {
 
 class DualSense : public joy_interface::Joy {
 public:
-    explicit DualSense(const std::string& device, uint32_t period)
-    : joy_interface::Joy(device, period) {}
+    explicit DualSense(const std::string& device, uint32_t period, const std::string& axis_layout)
+    : joy_interface::Joy(device, period, axis_layout) {}
 
     virtual ~DualSense();
 

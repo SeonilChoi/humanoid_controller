@@ -56,16 +56,30 @@ void playstation::DualSense::update() {
             }
         } else if (type == JS_EVENT_AXIS) {
             const float v = static_cast<float>(event.value) / 32767.0f;
-            switch (event.number) {
-                case 0: data_.stick_lx = deadzone(v); break;
-                case 1: data_.stick_ly = deadzone(-v); break;
-                case 2: data_.l2_analog = deadzone(v); break;
-                case 3: data_.stick_rx = deadzone(v); break;
-                case 4: data_.stick_ry = deadzone(-v); break;
-                case 5: data_.r2_analog = deadzone(v); break;
-                case 6: data_.dpad_x = v; break;
-                case 7: data_.dpad_y = -v; break;
-                default: break;
+            if (axis_layout_ == "generic") {
+                switch (event.number) {
+                    case 0: data_.stick_lx = deadzone(v); break;
+                    case 1: data_.stick_ly = deadzone(-v); break;
+                    case 2: data_.stick_rx = deadzone(v); break;
+                    case 3: data_.l2_analog = deadzone(v); break;
+                    case 4: data_.r2_analog = deadzone(v); break;
+                    case 5: data_.stick_ry = deadzone(-v); break;
+                    case 6: data_.dpad_x = v; break;
+                    case 7: data_.dpad_y = -v; break;
+                    default: break;
+                }
+            } else if (axis_layout_ == "playstation") {
+                switch (event.number) {
+                    case 0: data_.stick_lx = deadzone(v); break;
+                    case 1: data_.stick_ly = deadzone(-v); break;
+                    case 2: data_.l2_analog = deadzone(v); break;
+                    case 3: data_.stick_rx = deadzone(v); break;
+                    case 4: data_.stick_ry = deadzone(-v); break;
+                    case 5: data_.r2_analog = deadzone(v); break;
+                    case 6: data_.dpad_x = v; break;
+                    case 7: data_.dpad_y = -v; break;
+                    default: break;
+                }
             }
         }
     }

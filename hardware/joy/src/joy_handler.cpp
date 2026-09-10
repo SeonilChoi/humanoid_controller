@@ -51,9 +51,11 @@ void joy_handler::JoyHandler::load(const std::string& config_file) {
     const std::string device = config["device"].as<std::string>();
 
     const uint32_t period = config["period"].as<uint32_t>();
+
+    const std::string axis_layout = config["axis_layout"].as<std::string>();
     
     if (type == "dualsense") {
-        joy_ = std::make_unique<playstation::DualSense>(device, period);
+        joy_ = std::make_unique<playstation::DualSense>(device, period, axis_layout);
     }
 }
 

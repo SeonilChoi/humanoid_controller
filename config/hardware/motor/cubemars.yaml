@@ -2,7 +2,7 @@ masters:
   - id: 0
     period: 1000
     type: cubemars
-    device: can0
+    device: can1
 
     motors:
       - index: 0

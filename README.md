@@ -1,4 +1,4 @@
-# humanoid_controller
+# Humanoid Controller
 
 This project is a hierarchical control system for a humanoid robot.
 It includes motor control, sensor reading, and robot-level control.
@@ -53,11 +53,12 @@ make -j2
 
 ## Run
 
-After a successful build, you will find three programs in `build/`:
+After a successful build, you will find four programs in `build/`:
 
-- `motor_manager` — test motors
-- `sensor_manager` — test sensors
-- `robot_test` — run the full robot example
+- `motor_manager` - test motors
+- `sensor_manager` - test sensors
+- `joy_test` - test joystick 
+- `robot_test` - run the full robot example
 
 First, install the udev rules so USB devices have the right permissions.
 This script uses `sudo`. After it finishes, unplug and plug in your USB devices again.
@@ -78,6 +79,12 @@ Sensor test:
 ```bash
 cd ~/humanoid_controller/build
 ./sensor_manager ../config/hardware/sensor/xsens_mti.yaml
+```
+
+Joy test:
+```bash
+cd ~/humanoid_controller/build
+./joy_handler ../config/hardware/joy/dualstick.yaml
 ```
 
 Full robot test:
