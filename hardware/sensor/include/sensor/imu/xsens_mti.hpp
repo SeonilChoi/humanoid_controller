@@ -13,7 +13,7 @@
 #include <xscontroller/xsdevice_public.h>
 #include <xscontroller/xscontrol_public.h>
 
-namespace xsens_mti {
+namespace imu {
 
 class XsensCallback : public XsCallback {
 public:

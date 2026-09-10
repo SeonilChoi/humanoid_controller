@@ -10,6 +10,8 @@ robot::Robot::Robot(const std::string& config_file)
 
     sensor_manager_ = std::make_unique<sensor_manager::SensorManager>(sensor_manager_config_file_);
 
+    joy_handler_ = std::make_unique<joy_handler::JoyHandler>(joy_handler_config_file_);
+
     kinematics_ = std::make_unique<kinematics::Kinematics>(urdf_file_);
 }
 
@@ -25,6 +27,8 @@ void robot::Robot::load(const std::string& config_file) {
     motor_manager_config_file_ = root["motor_manager_config_file"].as<std::string>();
 
     sensor_manager_config_file_ = root["sensor_manager_config_file"].as<std::string>();
+
+    joy_handler_config_file_ = root["joy_handler_config_file"].as<std::string>();
 
     urdf_file_ = root["urdf_file"].as<std::string>();
 
@@ -80,9 +84,11 @@ void robot::Robot::load(const std::string& config_file) {
 void robot::Robot::start() {
     motor_manager_->start();
     sensor_manager_->start();
+    joy_handler_->start();
 }
 
 void robot::Robot::stop() {
     motor_manager_->stop();
     sensor_manager_->stop();
+    joy_handler_->stop();
 }

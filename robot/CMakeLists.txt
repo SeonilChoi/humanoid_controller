@@ -22,6 +22,7 @@ target_link_libraries(robot
     PUBLIC
         motor
         sensor
+        joy
         kinematics
         yaml-cpp
 )

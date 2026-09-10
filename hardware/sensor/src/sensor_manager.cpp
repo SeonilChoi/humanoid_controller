@@ -71,7 +71,7 @@ void sensor_manager::SensorManager::load(const std::string& config_file) {
 
         if (sensor == "imu") {
             if (type == "xsens_mti") {
-                sensors_[sensor_index] = std::make_unique<xsens_mti::XsensMti>(period, device, baudrate);
+                sensors_[sensor_index] = std::make_unique<imu::XsensMti>(period, device, baudrate);
 	    }
         }
 

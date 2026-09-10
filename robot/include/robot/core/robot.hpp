@@ -8,6 +8,7 @@
 
 #include "motor/motor_manager.hpp"
 #include "sensor/sensor_manager.hpp"
+#include "joy/joy_handler.hpp"
 #include "robot/core/kinematics.hpp"
 
 namespace robot {
@@ -51,6 +52,8 @@ protected:
 
     std::unique_ptr<sensor_manager::SensorManager> sensor_manager_;
 
+    std::unique_ptr<joy_handler::JoyHandler> joy_handler_;
+
     std::unique_ptr<kinematics::Kinematics> kinematics_;
 
     std::vector<double> observation_;
@@ -60,6 +63,8 @@ protected:
     std::string motor_manager_config_file_;
 
     std::string sensor_manager_config_file_;
+
+    std::string joy_handler_config_file_;
 
     std::string urdf_file_;
 

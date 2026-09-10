@@ -30,11 +30,11 @@ XsBaudRate to_xsbaudrate(uint32_t baudrate) {
     }
 }
 
-xsens_mti::XsensMti::~XsensMti() {
+imu::XsensMti::~XsensMti() {
     shutdown();
 }
 
-void xsens_mti::XsensMti::initialize() {
+void imu::XsensMti::initialize() {
     if (initialized_) return;
 
     control_ = XsControl::construct();
@@ -111,7 +111,7 @@ void xsens_mti::XsensMti::initialize() {
     initialized_ = true;
 }
 
-void xsens_mti::XsensMti::update() {
+void imu::XsensMti::update() {
     if (!initialized_) return;
 
     XsDataPacket packet;
@@ -159,12 +159,12 @@ void xsens_mti::XsensMti::update() {
     }
 }
 
-void xsens_mti::XsensMti::read(sensor_interface::imu_data_t& data) {
+void imu::XsensMti::read(sensor_interface::imu_data_t& data) {
     std::lock_guard<std::mutex> lock(mutex_);
     data = data_;
 }
 
-void xsens_mti::XsensMti::shutdown() {
+void imu::XsensMti::shutdown() {
     if (!initialized_ && control_ == nullptr) return;
 
     if (device_handle_ != nullptr) {

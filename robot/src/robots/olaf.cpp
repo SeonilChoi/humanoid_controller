@@ -4,6 +4,10 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include "motor/core/motor_interface.hpp"
+#include "sensor/core/sensor_interface.hpp"
+#include "joy/core/joy_interface.hpp"
+
 #include "sensor/core/imu.hpp"
 #include "robot/robots/olaf.hpp"
 
@@ -178,6 +182,14 @@ const std::vector<double>& olaf::Olaf::observation() {
     // gait phase [99:101]
     observation_.push_back(std::sin(phase_angle));
     observation_.push_back(std::cos(phase_angle));
+
+    // read joy data
+    joy_interface::joy_data_t joy_data{};
+    joy_handler_->read(joy_data);
+
+    command_[0] = joy_data.stick_ly; // vx
+    command_[1] = joy_data.stick_lx; // vy
+    command_[2] = joy_data.l2_analog != 0.0 ? joy_data.l2_analog : -joy_data.r2_analog; // w
 
     // command [101:104]
     observation_.push_back(command_[0] * 0.5);

@@ -2,6 +2,7 @@ name: olaf
 
 motor_manager_config_file: ../config/hardware/motor/olaf.yaml
 sensor_manager_config_file: ../config/hardware/sensor/xsens_mti.yaml
+joy_handler_config_file: ../config/hardware/joy/dualsense.yaml
 urdf_file: ../config/robot/olaf/olaf.urdf
 
 motors:
