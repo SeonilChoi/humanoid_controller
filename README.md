@@ -196,9 +196,9 @@ echo -e 'slcan\ngs_usb' | sudo tee /etc/modules-load.d/can-extra.conf
 ```
 
 Bring up the CAN interface.
-Use the same name as in your motor config. For example, `config/hardware/motor/olaf.yaml` uses `can0`.
+Use the same name as in your motor config. For example, `config/hardware/motor/olaf.yaml` uses `can1`.
 After the udev rules, the CANable adapter may appear as `/dev/CANable`.
 ```bash
-sudo slcand -o -c -s8 /dev/CANable can0
-sudo ip link set can0 up
+sudo slcand -o -c -s8 /dev/CANable can1
+sudo ip link set can1 up
 ```
