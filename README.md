@@ -14,9 +14,9 @@ It includes motor control, sensor reading, joystick input, and robot-level contr
 
 ### Sensors
 
-| Status             | Hardware Name  |
-| ------------------ | -------------- |
-| :heavy_check_mark: | `Xsense MTi`   |
+| Status             | Hardware Name |
+| ------------------ | ------------- |
+| :heavy_check_mark: | `Xsens MTi`   |
 
 ### Joysticks
 
