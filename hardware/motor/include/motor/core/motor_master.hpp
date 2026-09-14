@@ -23,7 +23,7 @@ public:
 
     virtual void shutdown() = 0;
 
-    virtual void update(uint8_t id, const motor_command_t& command, motor_state_t& status) = 0;
+    virtual void update(const motor_command_t* commands, motor_state_t* status) = 0;
 
     uint32_t period() const { return period_; }
 
@@ -31,6 +31,10 @@ protected:
     const uint32_t period_;
 
     std::unordered_map<uint8_t, std::unique_ptr<MotorDriver>> drivers_;
+
+    uint8_t ids_[MAX_MOTORS]{};
+
+    uint8_t n_ids_{0};
 };
 
 } // namespace motor_interface

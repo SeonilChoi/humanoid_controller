@@ -10,6 +10,7 @@
 #include "motor/motor_manager.hpp"
 #include "motor/master/unitree_master.hpp"
 #include "motor/master/cubemars_master.hpp"
+#include "motor/master/dynamixel_master.hpp"
 
 motor_manager::MotorManager::MotorManager(const std::string& config_file) {
     load(config_file);
@@ -84,6 +85,8 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
             masters_[master_id] = std::make_unique<unitree::UnitreeMaster>(period, device);
         } else if (type == "cubemars") {
             masters_[master_id] = std::make_unique<cubemars::CubemarsMaster>(period, device);
+        } else if (type == "dynamixel") {
+            masters_[master_id] = std::make_unique<dynamixel::DynamixelMaster>(period, device);
         }
 
         YAML::Node motors = m["motors"];
@@ -126,23 +129,28 @@ void motor_manager::MotorManager::run(uint8_t id) {
             next_wakeup += cycle;
             std::this_thread::sleep_until(next_wakeup);
 
-            for (const auto& route : routes) {
-                const uint8_t index = route.motor_index;
-                const uint8_t motor_id = route.motor_id;
+            //uint8_t ids[motor_interface::MAX_MOTORS];
+            motor_interface::motor_command_t commands[motor_interface::MAX_MOTORS];
+            motor_interface::motor_state_t status[motor_interface::MAX_MOTORS];
 
-                motor_interface::motor_command_t command{};
-                motor_interface::motor_state_t status{};
-                
-                {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    command = command_[index];
+            uint8_t n = 0;
+
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                for (const auto& route : routes) {
+                    //ids[n] = route.motor_id;
+                    commands[n] = command_[route.motor_index];
+                    ++n;
                 }
+            }
 
-                master.update(motor_id, command, status);
-            
-                {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    status_[index] = status;
+            //master.update(ids, n, commands, status);
+            master.update(commands, status);
+
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                for (uint8_t i = 0; i < n; ++i) {
+                    status_[routes[i].motor_index] = status[i];
                 }
             }
 

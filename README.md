@@ -11,6 +11,7 @@ It includes motor control, sensor reading, joystick input, and robot-level contr
 | ------------------ | ------------- |
 | :heavy_check_mark: | `Unitree`     |
 | :heavy_check_mark: | `Cubemars`    |
+| :heavy_check_mark: | `Dynamixel`   |
 
 ### Sensors
 

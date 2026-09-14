@@ -37,6 +37,7 @@ public:
 
     void add_motor(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution) override {
         drivers_[id] = std::make_unique<unitree::UnitreeDriver>(id, gear_ratio, zero_offset, pulse_per_revolution);
+        ids_[n_ids_++] = id;
     }
 
     void initialize() override {
@@ -82,18 +83,21 @@ public:
         }
     }
 
-    void update(uint8_t id, const motor_interface::motor_command_t& command, motor_interface::motor_state_t& status) override {
-        auto& driver = *drivers_.at(id);
+    void update(const motor_interface::motor_command_t* commands, motor_interface::motor_state_t* status) override {
+        for (uint8_t i = 0; i < n_ids_; ++i) {
+            const uint8_t id = ids_[i];
+            auto& driver = *drivers_.at(id);
 
-        uint8_t tx[TX_PACKET_SIZE]{};
-        const std::size_t tx_size = driver.encode(command, tx, sizeof(tx));
+            uint8_t tx[TX_PACKET_SIZE]{};
+            const std::size_t tx_size = driver.encode(commands[i], tx, sizeof(tx));
 
-        send_packet(tx, tx_size);
+            send_packet(tx, tx_size);
 
-        uint8_t rx[RX_PACKET_SIZE]{};
-        const std::size_t rx_size = receive_packet(rx, sizeof(rx));
+            uint8_t rx[RX_PACKET_SIZE]{};
+            const std::size_t rx_size = receive_packet(rx, sizeof(rx));
 
-        driver.decode(rx, rx_size, status);
+            driver.decode(rx, rx_size, status[i]);
+        }
     }
 
 private:

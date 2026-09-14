@@ -13,7 +13,6 @@ namespace unitree {
 constexpr std::size_t TX_PACKET_SIZE = 17;
 constexpr std::size_t RX_PACKET_SIZE = 16;
 
-
 constexpr uint8_t MODE_LOCK = 0;
 constexpr uint8_t MODE_FOC = 1;
 constexpr uint8_t TIMEOUT_ENABLE = 0;
