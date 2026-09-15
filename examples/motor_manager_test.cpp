@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 
     motor_manager.start();
 
-    motor_interface::motor_command_t command[2]{};
+    motor_interface::motor_command_t command[3]{};
 
     command[0].position = 1.5;
     command[0].velocity = 0.0;
@@ -33,7 +33,13 @@ int main(int argc, char* argv[])
     command[1].kp = 0.2;
     command[1].kd = 0.1;
 
-    motor_interface::motor_state_t status[2]{};
+    command[2].position = 1.5;
+    command[2].velocity = 0.0;
+    command[2].torque = 0.0;
+    command[2].kp = 0.2;
+    command[2].kd = 0.1;
+
+    motor_interface::motor_state_t status[3]{};
 
     for (int i = 0; i < 1000; i++) {
         motor_manager.write(command);
@@ -41,11 +47,13 @@ int main(int argc, char* argv[])
         motor_manager.read(status);
         std::cout << "Motor ID 0 " << status[0].position << std::endl;
         std::cout << "Motor ID 1 " << status[1].position << std::endl;
+        std::cout << "Motor ID 2 " << status[2].position << std::endl;
 
         if (i % 100 == 0) {
             double tmp = command[1].position;
             command[1].position = command[0].position;
             command[0].position = tmp;
+            command[2].position = tmp;
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
