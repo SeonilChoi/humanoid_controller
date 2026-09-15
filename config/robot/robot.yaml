@@ -1,9 +1,9 @@
-name: olaf
+name: robot
 
 motor_manager_config_file: ../config/hardware/motor/robot.yaml
 sensor_manager_config_file: ../config/hardware/sensor/xsens_mti.yaml
 joy_handler_config_file: ../config/hardware/joy/dualsense.yaml
-urdf_file: ../config/robot/olaf/olaf.urdf
+urdf_file: ../config/robot/robot.urdf
 
 motors:
   - name: left_hip_yaw
