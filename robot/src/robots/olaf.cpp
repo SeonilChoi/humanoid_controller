@@ -80,6 +80,18 @@ olaf::Olaf::Olaf(const std::string& config_file)
     test_command_[3].torque = 0.0;
     test_command_[3].kp = 10.0;
     test_command_[3].kd = 5.0;
+
+    test_command_[4].position = 1.5;
+    test_command_[4].velocity = 0.0;
+    test_command_[4].torque = 0.0;
+    test_command_[4].kp = 0.1;
+    test_command_[4].kd = 0.1;
+
+    test_command_[5].position = 0.0;
+    test_command_[5].velocity = 0.0;
+    test_command_[5].torque = 0.0;
+    test_command_[5].kp = 0.1;
+    test_command_[5].kd = 0.1;
 }
 
 const std::vector<double>& olaf::Olaf::observation() {
@@ -89,16 +101,18 @@ const std::vector<double>& olaf::Olaf::observation() {
     motor_manager_->read(motor_status);
     */
 
-    motor_interface::motor_state_t motor_status[4]{};
+    motor_interface::motor_state_t motor_status[6]{};
     motor_manager_->read(motor_status);
     
     // update kinematics with current motor positions
     Eigen::VectorXd joint_positions = Eigen::VectorXd::Zero(NUM_JOINTS);
 
+    /*
     for (const auto& joint_id : joint_ids_) {
         const int joint_index = kinematics_->joint_index(joint_id);
         joint_positions[joint_index] = motor_status[joint_id_to_motor_index_.at(joint_id)].position;
     }
+    */
 
     kinematics_->update(joint_positions);
 
@@ -203,11 +217,12 @@ void olaf::Olaf::control() {
     if (test_count_ % 100 == 0) {
         double tmp = test_command_[1].position;
         test_command_[1].position = test_command_[0].position;
-        test_command_[0].position = tmp;
+        test_command_[3].position = test_command_[0].position;
+        test_command_[5].position = test_command_[0].position;
 
-        tmp = test_command_[3].position;
-        test_command_[3].position = test_command_[2].position;
+        test_command_[0].position = tmp;
         test_command_[2].position = tmp;
+        test_command_[4].position = tmp;
     }
     test_count_++;
 
