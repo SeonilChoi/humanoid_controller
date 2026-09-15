@@ -191,12 +191,6 @@ const std::vector<double>& olaf::Olaf::observation() {
         append_vector(heading_R_root * toe_position, observation_);
     }
 
-    const double phase_angle = 2.0 * PI * gait_phase_;
-
-    // gait phase [99:101]
-    observation_.push_back(std::sin(phase_angle));
-    observation_.push_back(std::cos(phase_angle));
-
     // read joy data
     joy_interface::joy_data_t joy_data{};
     joy_handler_->read(joy_data);
@@ -205,7 +199,7 @@ const std::vector<double>& olaf::Olaf::observation() {
     command_[1] = -joy_data.stick_lx; // vy
     command_[2] = -joy_data.stick_rx; // w
 
-    // command [101:104]
+    // command [99:102]
     observation_.push_back(command_[0] * 0.5);
     observation_.push_back(command_[1] * 0.5);
     observation_.push_back(command_[2] * 0.25);

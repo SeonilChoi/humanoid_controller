@@ -55,9 +55,9 @@ int main(int argc, char* argv[])
                   << std::endl;
 
         std::cout << "command: "
+                  << observation[99] << " "
+                  << observation[100] << " "
                   << observation[101] << " "
-                  << observation[102] << " "
-                  << observation[103] << " "
                   << std::endl;
         
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
