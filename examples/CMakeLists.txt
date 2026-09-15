@@ -9,3 +9,6 @@ target_link_libraries(joy_test PRIVATE joy)
 
 add_executable(robot_test src/robot_test.cpp)
 target_link_libraries(robot_test PRIVATE olaf)
+
+add_executable(controller_test src/controller_test.cpp)
+target_link_libraries(controller_test PRIVATE controller)

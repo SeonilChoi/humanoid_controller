@@ -24,6 +24,7 @@ target_link_libraries(robot
         sensor
         joy
         kinematics
+        controller
         yaml-cpp
 )
 

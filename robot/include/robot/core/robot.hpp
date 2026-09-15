@@ -10,6 +10,7 @@
 #include "sensor/sensor_manager.hpp"
 #include "joy/joy_handler.hpp"
 #include "robot/core/kinematics.hpp"
+#include "controller/core/controller.hpp"
 
 namespace robot {
 
@@ -41,9 +42,9 @@ public:
 
     virtual void stop();
 
-    virtual const std::vector<double>& observation() = 0;
+    virtual void observation(std::vector<double>& observation) = 0;
 
-    virtual void control() = 0;
+    virtual void control(const std::vector<double>& observation, std::vector<double>& action) = 0;
 
 protected:
     void load(const std::string& config_file);    
@@ -56,7 +57,7 @@ protected:
 
     std::unique_ptr<kinematics::Kinematics> kinematics_;
 
-    std::vector<double> observation_;
+    std::unique_ptr<controller::Controller> controller_;
 
     std::string name_;
 
@@ -67,6 +68,8 @@ protected:
     std::string joy_handler_config_file_;
 
     std::string urdf_file_;
+
+    std::string model_file_;
 
     std::vector<motor_config_t> motors_;
 

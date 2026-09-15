@@ -12,5 +12,6 @@ find_package(Eigen3 REQUIRED)
 find_package(pinocchio REQUIRED)
 
 add_subdirectory(hardware)
+add_subdirectory(controller)
 add_subdirectory(robot)
 add_subdirectory(examples)

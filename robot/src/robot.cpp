@@ -32,6 +32,8 @@ void robot::Robot::load(const std::string& config_file) {
 
     urdf_file_ = root["urdf_file"].as<std::string>();
 
+    model_file_ = root["model_file"].as<std::string>();
+
     const YAML::Node motors = root["motors"];
 
     if (!motors || !motors.IsSequence()) {
@@ -85,10 +87,14 @@ void robot::Robot::start() {
     motor_manager_->start();
     sensor_manager_->start();
     joy_handler_->start();
+
+    controller_->initialize();
 }
 
 void robot::Robot::stop() {
     motor_manager_->stop();
     sensor_manager_->stop();
     joy_handler_->stop();
+    
+    controller_->shutdown();
 }

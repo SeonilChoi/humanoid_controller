@@ -34,21 +34,3 @@ masters:
         gear_ratio: 36.0
         zero_offset: 0.0
         pulse_per_revolution: 65536
-
-  - id: 2
-    period: 1000 # microseconds
-    type: dynamixel
-    device: /dev/Dynamixel
-
-    motors:
-      - index: 4
-        id: 1
-        gear_ratio: 1.0
-        zero_offset: 0.0
-        pulse_per_revolution: 4096
-
-      - index: 5
-        id: 2
-        gear_ratio: 1.0
-        zero_offset: 0.0
-        pulse_per_revolution: 4096

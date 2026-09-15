@@ -1,5 +1,6 @@
 #include <thread>
 #include <chrono>
+#include <vector>
 #include <iostream>
 
 #include "robot/robots/olaf.hpp"
@@ -18,11 +19,14 @@ int main(int argc, char* argv[])
     olaf.start();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    olaf.control();
+    std::vector<double> observation(102);
+    std::vector<double> action(12);
+
+    olaf.control(observation, action);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     for (int i = 0; i < 1000; ++i) {
-        const auto observation = olaf.observation();
+        olaf.observation(observation);
 
         std::cout << "heading: "
                   << observation[0] << " "
@@ -62,7 +66,7 @@ int main(int argc, char* argv[])
         
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     
-        olaf.control();
+        olaf.control(observation, action);
     }
 
     olaf.stop();

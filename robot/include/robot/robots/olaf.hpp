@@ -14,9 +14,9 @@ public:
 
     virtual ~Olaf() = default;
 
-    const std::vector<double>& observation() override;
+    void observation(std::vector<double>& observation) override;
 
-    void control() override;
+    void control(const std::vector<double>& observation, std::vector<double>& action) override;
 
 private:
     std::vector<pinocchio::JointIndex> joint_ids_;
@@ -36,12 +36,6 @@ private:
     std::vector<pinocchio::FrameIndex> foot_frame_ids_;
 
     std::vector<Eigen::Vector3d> foot_toe_offsets_;
-
-    std::array<double, 3> command_{};
-
-    motor_interface::motor_command_t test_command_[6]{};
-    
-    int test_count_{0};
 };
 
 } // namespace olaf

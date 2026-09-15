@@ -203,3 +203,8 @@ After the udev rules, the CANable adapter may appear as `/dev/CANable`.
 sudo slcand -o -c -s8 /dev/CANable can1
 sudo ip link set can1 up
 ```
+
+```bash
+export CMAKE_PREFIX_PATH=$HOME/.local:$CMAKE_PREFIX_PATH
+export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
+```
