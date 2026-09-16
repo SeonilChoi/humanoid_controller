@@ -1,29 +1,29 @@
 # Humanoid Controller
 
-This project is a hierarchical control system for a humanoid robot.
-It includes motor control, sensor reading, joystick input, and robot-level control.
+This project controls a humanoid robot.
+It can talk to motors, sensors, and a joystick.
 
-## Supported hardwares
+## Supported hardware
 
-### Motor drivers
+### Motors
 
-| Status             | Hardware Name |
-| ------------------ | ------------- |
-| :heavy_check_mark: | `Unitree`     |
-| :heavy_check_mark: | `Cubemars`    |
-| :heavy_check_mark: | `Dynamixel`   |
+| Status             | Hardware    |
+| ------------------ | ----------- |
+| :heavy_check_mark: | `Unitree`   |
+| :heavy_check_mark: | `Cubemars`  |
+| :heavy_check_mark: | `Dynamixel` |
 
 ### Sensors
 
-| Status             | Hardware Name |
-| ------------------ | ------------- |
-| :heavy_check_mark: | `Xsens MTi`   |
+| Status             | Hardware    |
+| ------------------ | ----------- |
+| :heavy_check_mark: | `Xsens MTi` |
 
 ### Joysticks
 
-| Status             | Hardware Name  |
-| ------------------ | -------------- |
-| :heavy_check_mark: | `Dualsense`    |
+| Status             | Hardware   |
+| ------------------ | ---------- |
+| :heavy_check_mark: | `DualSense` |
 
 ## Clone
 ```bash
@@ -31,7 +31,7 @@ cd ~/
 git clone https://github.com/SeonilChoi/humanoid_controller.git
 ```
 
-## Pre-build
+## Setup
 
 1. Install the required packages.
 ```bash
@@ -40,7 +40,7 @@ sudo apt update
 xargs -a ./requirements/apt-packages.txt sudo apt install -y
 ```
 
-2. Install Pinocchio from source. This project uses it to read the robot URDF and compute kinematics.
+2. Install Pinocchio. The robot uses it to read the URDF.
 ```bash
 cd ~/
 sudo apt install -y cmake build-essential git \
@@ -58,16 +58,27 @@ make -j2
 make install
 ```
 
-3. Set these environment variables. Add them to `~/.bashrc` if you want them in every new terminal.
+3. Install ONNX Runtime. The robot controller needs it.
+On Jetson, use the ARM64 package.
+```bash
+mkdir -p ~/.local
+cd /tmp
+wget https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-linux-aarch64-1.20.1.tgz
+tar -xzf onnxruntime-linux-aarch64-1.20.1.tgz
+cp -r onnxruntime-linux-aarch64-1.20.1/include/. ~/.local/include/
+cp -r onnxruntime-linux-aarch64-1.20.1/lib/. ~/.local/lib/
+```
+
+4. Set these environment variables. Add them to `~/.bashrc` if you want them in every new terminal.
 ```bash
 export CMAKE_PREFIX_PATH=$HOME/.local:$CMAKE_PREFIX_PATH
 export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
 export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig:$PKG_CONFIG_PATH
 ```
 
-4. Install the udev rules so USB devices have the right permissions.
+5. Install the udev rules so USB devices have the right names and permissions.
 This script uses `sudo`. After it finishes, unplug and plug in your USB devices again.
-If the devices are already plugged in, the script also sets permissions and brings up `can0`.
+If the devices are already plugged in, the script also sets permissions and brings up `can1`.
 ```bash
 cd ~/humanoid_controller/requirements
 ./udev-rules.sh
@@ -75,9 +86,9 @@ cd ~/humanoid_controller/requirements
 
 ## Build
 
-Build the main project. CMake also builds `xspublic` for the Xsens MTi sensors.
+Build the project. CMake also builds the Xsens library.
 
-Make sure the Pinocchio environment variables from Pre-build are still set.
+Make sure the environment variables from Setup are still set.
 ```bash
 cd ~/humanoid_controller
 mkdir -p build && cd build
@@ -87,26 +98,33 @@ make -j2
 
 ## Run
 
-After a successful build, you will find four programs in `build/`:
+After a successful build, you will find these programs:
 
-- `motor_manager` — test motors
-- `sensor_manager` — test sensors
-- `joy_test` — test the joystick
-- `robot_test` — run the full robot example
+- `build/examples/example_unitree` — test Unitree motors
+- `build/examples/example_cubemars` — test Cubemars motors
+- `build/examples/example_dynamixel` — test Dynamixel motors
+- `build/examples/example_xsens` — test the IMU
+- `build/examples/example_dualsense` — test the joystick
+- `build/ARTI-H1` — run the robot
 
-### Motor test (you can also use `cubemars.yaml` or `olaf.yaml`):
+Run the commands from `build/`. Press `Ctrl+C` to stop.
+
+### Motor test
+The last number is the goal position in radians.
 ```bash
 cd ~/humanoid_controller/build
-./motor_manager ../config/hardware/motor/unitree.yaml
+./examples/example_unitree ../config/hardware/motor/unitree.yaml 0.0
+./examples/example_cubemars ../config/hardware/motor/cubemars.yaml 0.0
+./examples/example_dynamixel ../config/hardware/motor/dynamixel.yaml 0.0
 ```
 
-### Sensor test:
+### Sensor test
 ```bash
 cd ~/humanoid_controller/build
-./sensor_manager ../config/hardware/sensor/xsens_mti.yaml
+./examples/example_xsens ../config/hardware/sensor/xsens_mti.yaml
 ```
 
-### Joystick test:
+### Joystick test
 
 First, check the joystick driver.
 ```bash
@@ -114,7 +132,8 @@ udevadm info -a /dev/input/js0 | grep -E 'DRIVER'
 ```
 
 You will see `hid-generic` or `hid-playstation`.
-Then set `axis_layout` in `config/hardware/joy/dualsense.yaml`:
+Then set `axis_layout` in `config/hardware/joy/dualsense.yaml`
+(and in `config/robot/ARTI-H1/joy.yaml` if you run the robot):
 
 - `hid-generic` → `generic`
 - `hid-playstation` → `playstation`
@@ -128,13 +147,13 @@ axis_layout: generic
 
 ```bash
 cd ~/humanoid_controller/build
-./joy_test ../config/hardware/joy/dualsense.yaml
+./examples/example_dualsense ../config/hardware/joy/dualsense.yaml
 ```
 
-### Full robot test:
+### Robot
 ```bash
 cd ~/humanoid_controller/build
-./robot_test ../config/robot/olaf/olaf.yaml
+./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml
 ```
 
 ## Troubleshooting
@@ -146,7 +165,8 @@ Check the driver and set `axis_layout` as shown in the Run section.
 
 ### Jetson Orin Nano: `slcand` is missing
 
-On a Jetson Orin Nano, `slcand` is not available by default. You need to build extra kernel modules.
+On a Jetson Orin Nano, `slcand` is not installed by default.
+You need to build two extra kernel modules.
 
 The steps below use L4T R36.4.4 kernel sources.
 
@@ -175,7 +195,7 @@ make -C /lib/modules/$(uname -r)/build M=$HOME/can-mods/slcan modules
 make -C /lib/modules/$(uname -r)/build M=$HOME/can-mods/gs_usb modules
 ```
 
-Check vermagic. The string must match your running kernel (`uname -r`).
+Check that the module matches your kernel (`uname -r`).
 On Jetson Orin Nano it often looks like `5.15.148-tegra SMP preempt`.
 ```bash
 modinfo ~/can-mods/slcan/slcan.ko | grep vermagic
@@ -197,14 +217,9 @@ echo -e 'slcan\ngs_usb' | sudo tee /etc/modules-load.d/can-extra.conf
 ```
 
 Bring up the CAN interface.
-Use the same name as in your motor config. For example, `config/hardware/motor/olaf.yaml` uses `can1`.
+Use the same name as in your motor config. For example, `config/robot/ARTI-H1/motor.yaml` uses `can1`.
 After the udev rules, the CANable adapter may appear as `/dev/CANable`.
 ```bash
 sudo slcand -o -c -s8 /dev/CANable can1
 sudo ip link set can1 up
-```
-
-```bash
-export CMAKE_PREFIX_PATH=$HOME/.local:$CMAKE_PREFIX_PATH
-export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
 ```
