@@ -1,8 +1,14 @@
 #include <thread>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 
 #include "robot/robots/ARTI_H1.hpp"
+
+namespace {
+volatile std::sig_atomic_t running = 1;
+void on_sigint(int) { running = 0; }
+}
 
 int main(int argc, char* argv[])
 {
@@ -11,9 +17,11 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    std::signal(SIGINT, on_sigint);
+
     const std::string config_file = argv[1];
 
-    arti::ArtiH1 robot(config_file);
+    robot::ArtiH1 robot(config_file);
 
     robot.start();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -21,7 +29,7 @@ int main(int argc, char* argv[])
     robot.control();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    for (int i = 0; i < 1000; ++i) {
+    while (running) {
         robot.observation();
         
         std::this_thread::sleep_for(std::chrono::milliseconds(10));

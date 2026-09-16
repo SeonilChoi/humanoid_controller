@@ -27,6 +27,8 @@ int main(int argc, char* argv[])
     motor_interface::motor_command_t command[motor_interface::MAX_MOTORS]{};
     for (int i = 0; i < n_motors; ++i) {
         command[i].position = goal_position;
+        command[i].kp = 10.0;
+        command[i].kd = 5.0;
     }
     motor_interface::motor_state_t status[motor_interface::MAX_MOTORS]{};
 

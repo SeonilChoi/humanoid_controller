@@ -1,10 +1,10 @@
 name: robot
 
-motor_manager_config_file: ../config/hardware/motor/robot.yaml
-sensor_manager_config_file: ../config/hardware/sensor/xsens_mti.yaml
-joy_handler_config_file: ../config/hardware/joy/dualsense.yaml
-urdf_file: ../config/robot/robot.urdf
-model_file: ../config/model/amp/agent.onnx
+motor_manager_config_file: ../config/robot/ARTI-H1/motor.yaml
+sensor_manager_config_file: ../config/robot/ARTI-H1/sensor.yaml
+joy_handler_config_file: ../config/robot/ARTI-H1/joy.yaml
+urdf_file: ../config/robot/ARTI-H1/robot.urdf
+model_file: ../config/robot/ARTI-H1/agent.onnx
 
 motors:
   - name: left_hip_yaw

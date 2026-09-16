@@ -1,22 +1,31 @@
 #include <thread>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 
-#include "joy/core/joy_interface.hpp"
 #include "joy/joy_handler.hpp"
+#include "joy/core/joy_interface.hpp"
 
-int main(int argc, char** argv) {
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <config file>" << std::endl;
+namespace {
+volatile std::sig_atomic_t running = 1;
+void on_sigint(int) { running = 0; }
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <config_file>" << std::endl;
         return 1;
     }
 
     joy_handler::JoyHandler joy_handler(argv[1]);
-    joy_handler.start();
 
-    while (true) {
-        joy_interface::joy_data_t data;
+    joy_interface::joy_data_t data;
+
+    joy_handler.start();
+    
+    while (running) {
         joy_handler.read(data);
+
         std::cout << "Cross: " << data.cross << std::endl;
         std::cout << "Circle: " << data.circle << std::endl;
         std::cout << "Triangle: " << data.triangle << std::endl;

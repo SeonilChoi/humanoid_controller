@@ -1,11 +1,16 @@
-#include <string>
 #include <thread>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 
-#include "sensor/core/sensor_interface.hpp"
-#include "sensor/core/imu.hpp"
 #include "sensor/sensor_manager.hpp"
+#include "sensor/core/imu.hpp"
+#include "sensor/core/sensor_interface.hpp"
+
+namespace {
+volatile std::sig_atomic_t running = 1;
+void on_sigint(int) { running = 0; }
+}
 
 int main(int argc, char* argv[])
 {
@@ -14,9 +19,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    const std::string config_file = argv[1];
-
-    sensor_manager::SensorManager sensor_manager(config_file);
+    sensor_manager::SensorManager sensor_manager(argv[1]);
 
     sensor_manager.start();
 
@@ -24,7 +27,7 @@ int main(int argc, char* argv[])
 
     sensor_interface::imu_data_t data{};
 
-    for (int i = 0; i < 1000; i++) {
+    while (running) {
         imu.read(data);
 
         std::cout << "Xsens MTi orientation: "
@@ -45,6 +48,8 @@ int main(int argc, char* argv[])
 
         std::cout << "Xsens MTi temperature: "
                   << data.temperature << std::endl;
+
+        std::cout << std::endl;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }

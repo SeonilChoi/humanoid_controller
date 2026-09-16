@@ -1,15 +1,15 @@
-#ifndef CONTROLLER_AMP_CONTROLLER_HPP_
-#define CONTROLLER_AMP_CONTROLLER_HPP_
+#ifndef ROBOT_CONTROLLERS_AMP_CONTROLLER_HPP_
+#define ROBOT_CONTROLLERS_AMP_CONTROLLER_HPP_
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "controller/core/controller.hpp"
+#include "robot/core/controller.hpp"
 
-namespace amp {
+namespace controller {
 
-class AmpController : public controller::Controller {
+class AmpController : public Controller {
 public:
     explicit AmpController(const std::string& model_file);
 
@@ -31,6 +31,6 @@ private:
     bool initialized_{false};
 };
 
-} // namespace amp
+}
 
-#endif // CONTROLLER_AMP_CONTROLLER_HPP_
+#endif // ROBOT_CONTROLLERS_AMP_CONTROLLER_HPP_

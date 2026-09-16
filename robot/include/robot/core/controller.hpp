@@ -1,5 +1,5 @@
-#ifndef CONTROLLER_CORE_CONTROLLER_HPP_
-#define CONTROLLER_CORE_CONTROLLER_HPP_
+#ifndef ROBOT_CORE_CONTROLLER_HPP_
+#define ROBOT_CORE_CONTROLLER_HPP_
 
 #include <vector>
 
@@ -18,4 +18,4 @@ public:
 
 } // namespace controller
 
-#endif // CONTROLLER_CORE_CONTROLLER_HPP_
+#endif // ROBOT_CORE_CONTROLLER_HPP_

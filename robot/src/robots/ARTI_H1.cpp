@@ -10,7 +10,7 @@
 #include "joy/core/joy_interface.hpp"
 
 #include "sensor/core/imu.hpp"
-#include "controller/amp_controller.hpp"
+#include "robot/controllers/amp_controller.hpp"
 
 #include "robot/robots/ARTI_H1.hpp"
 
@@ -33,7 +33,7 @@ void append_rotation(const Eigen::Matrix3d& value, std::vector<double>& vector) 
 
 } // namespace
 
-arti::ArtiH1::ArtiH1(const std::string& config_file)
+robot::ArtiH1::ArtiH1(const std::string& config_file)
     : robot::Robot(config_file) {
     if (motors_.size() != NUM_JOINTS) {
         throw std::runtime_error("[ArtiH1::ArtiH1] Invalid number of joints.");
@@ -60,7 +60,8 @@ arti::ArtiH1::ArtiH1(const std::string& config_file)
         foot_toe_offsets_.push_back(Eigen::Vector3d(foot.offset.data()));
     }
 
-    controller_ = std::make_unique<amp::AmpController>(model_file_);
+    controller_ = std::make_unique<controller::AmpController>(model_file_);
+    controller_->initialize();
 
     observation_.clear();
     action_.clear();
@@ -75,7 +76,7 @@ arti::ArtiH1::ArtiH1(const std::string& config_file)
     }
 }
 
-void arti::ArtiH1::observation() {
+void robot::ArtiH1::observation() {
     // read motor status
     /*
     motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
@@ -182,7 +183,7 @@ void arti::ArtiH1::observation() {
     observation_.push_back(-joy_data.stick_rx * 0.25);
 }
 
-void arti::ArtiH1::control() {
+void robot::ArtiH1::control() {
     if (!observation_.empty()) {
         controller_->update(observation_, action_);
         

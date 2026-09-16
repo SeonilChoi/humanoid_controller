@@ -6,9 +6,9 @@
 
 #include "robot/core/robot.hpp"
 
-namespace arti {
+namespace robot {
 
-class ArtiH1 : public robot::Robot {
+class ArtiH1 : public Robot {
 public:
     explicit ArtiH1(const std::string& config_file);
 
@@ -38,6 +38,6 @@ private:
     std::vector<Eigen::Vector3d> foot_toe_offsets_;
 };
 
-} // namespace arti
+} // namespace robot
 
 #endif // ROBOT_ROBOTS_ARTI_H1_HPP_

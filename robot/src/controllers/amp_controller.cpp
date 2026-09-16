@@ -2,7 +2,7 @@
 
 #include <onnxruntime_cxx_api.h>
 
-#include "controller/amp_controller.hpp"
+#include "robot/controllers/amp_controller.hpp"
 
 namespace {
 
@@ -19,7 +19,7 @@ std::size_t shape_size(std::vector<int64_t>& shape) {
 
 }
 
-struct amp::AmpController::Impl {
+struct controller::AmpController::Impl {
     Ort::Env env{ORT_LOGGING_LEVEL_WARNING, "AmpController"};
     Ort::SessionOptions session_options;
     std::unique_ptr<Ort::Session> session;
@@ -35,14 +35,14 @@ struct amp::AmpController::Impl {
     std::vector<float> output;
 };
 
-amp::AmpController::AmpController(const std::string& model_file)
+controller::AmpController::AmpController(const std::string& model_file)
 : model_file_(model_file) {}
 
-amp::AmpController::~AmpController() {
+controller::AmpController::~AmpController() {
     shutdown();
 }
 
-void amp::AmpController::initialize() {
+void controller::AmpController::initialize() {
     if (initialized_) return;
 
     if (model_file_.empty()) {
@@ -77,12 +77,12 @@ void amp::AmpController::initialize() {
     initialized_ = true;
 }
 
-void amp::AmpController::shutdown() {
+void controller::AmpController::shutdown() {
     impl_.reset();
     initialized_ = false;
 }
 
-void amp::AmpController::update(const std::vector<double>& observation, std::vector<double>& action) {
+void controller::AmpController::update(const std::vector<double>& observation, std::vector<double>& action) {
     if (!initialized_ || !impl_ || !impl_->session) {
         throw std::runtime_error("[AmpController::update] Not initialized.");
     }

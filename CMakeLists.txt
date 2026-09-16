@@ -12,6 +12,8 @@ find_package(Eigen3 REQUIRED)
 find_package(pinocchio REQUIRED)
 
 add_subdirectory(hardware)
-add_subdirectory(controller)
 add_subdirectory(robot)
 add_subdirectory(examples)
+
+add_executable(ARTI-H1 main.cpp)
+target_link_libraries(ARTI-H1 PRIVATE robot)
