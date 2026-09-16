@@ -16,9 +16,3 @@ masters:
         gear_ratio: 1.0
         zero_offset: 0.0
         pulse_per_revolution: 4096
-
-      - index: 2
-        id: 3
-        gear_ratio: 1.0
-        zero_offset: 0.0
-        pulse_per_revolution: 4096
