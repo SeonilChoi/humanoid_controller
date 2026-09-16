@@ -9,6 +9,8 @@
 #include "motor/motor_manager.hpp"
 #include "sensor/sensor_manager.hpp"
 #include "joy/joy_handler.hpp"
+
+#include "motor/core/motor_interface.hpp"
 #include "robot/core/kinematics.hpp"
 #include "controller/core/controller.hpp"
 
@@ -76,6 +78,12 @@ protected:
     std::vector<sensor_config_t> sensors_;
 
     std::vector<foot_config_t> foots_;
+
+    std::vector<double> observation_;
+
+    std::vector<double> action_;
+
+    motor_interface::motor_command_t motor_command_[motor_interface::MAX_MOTORS]{};
 
 private:
     const std::string config_file_;

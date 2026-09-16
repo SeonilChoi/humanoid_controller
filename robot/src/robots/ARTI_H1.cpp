@@ -9,15 +9,15 @@
 #include "sensor/core/sensor_interface.hpp"
 #include "joy/core/joy_interface.hpp"
 
+#include "sensor/core/imu.hpp"
 #include "controller/amp_controller.hpp"
 
-#include "sensor/core/imu.hpp"
-#include "robot/robots/olaf.hpp"
+#include "robot/robots/ARTI_H1.hpp"
 
 namespace {
 
 constexpr std::size_t NUM_JOINTS = 12;
-constexpr std::size_t OBSERVATION_SIZE = 104;
+constexpr std::size_t OBSERVATION_SIZE = 102;
 constexpr double PI = 3.14159265358979323846;
 
 void append_vector(const Eigen::Vector3d& value, std::vector<double>& vector) {
@@ -33,10 +33,10 @@ void append_rotation(const Eigen::Matrix3d& value, std::vector<double>& vector) 
 
 } // namespace
 
-olaf::Olaf::Olaf(const std::string& config_file)
+arti::ArtiH1::ArtiH1(const std::string& config_file)
     : robot::Robot(config_file) {
     if (motors_.size() != NUM_JOINTS) {
-        throw std::runtime_error("[Olaf::Olaf] Invalid number of joints.");
+        throw std::runtime_error("[ArtiH1::ArtiH1] Invalid number of joints.");
     }
 
     for (const auto& motor : motors_) {
@@ -61,17 +61,29 @@ olaf::Olaf::Olaf(const std::string& config_file)
     }
 
     controller_ = std::make_unique<amp::AmpController>(model_file_);
+
+    observation_.clear();
+    action_.clear();
+
+    for (uint8_t i = 0; i < 2; ++i) {
+        motor_command_[i].kp = 0.5;
+        motor_command_[i].kd = 0.2;
+    }
+    for (uint8_t i = 2; i < 4; ++i) {
+        motor_command_[i].kp = 10.0;
+        motor_command_[i].kd = 5.0;
+    }
 }
 
-void olaf::Olaf::observation(std::vector<double>& observation) {
+void arti::ArtiH1::observation() {
     // read motor status
     /*
     motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
     motor_manager_->read(motor_status);
     */
 
-    observation.clear();
-    observation.reserve(OBSERVATION_SIZE);
+    observation_.clear();
+    observation_.reserve(OBSERVATION_SIZE);
 
     motor_interface::motor_state_t motor_status[4]{};
     motor_manager_->read(motor_status);
@@ -99,7 +111,7 @@ void olaf::Olaf::observation(std::vector<double>& observation) {
         imu_data.orientation[3]
     );
     if (world_q_imu.norm() < 1.0e-8) {
-        throw std::runtime_error("[Olaf::observation] Invalid IMU orientation.");
+        throw std::runtime_error("[ArtiH1::observation] Invalid IMU orientation.");
     }
     world_q_imu.normalize();
 
@@ -133,19 +145,19 @@ void olaf::Olaf::observation(std::vector<double>& observation) {
     const Eigen::Vector3d angular_velocity_heading = heading_R_world * angular_velocity_world;
 
     // heading rotation [0:6]
-    append_rotation(heading_R_root, observation);
+    append_rotation(heading_R_root, observation_);
 
     // body angular velocity in heading frame [6:9]
-    append_vector(angular_velocity_heading, observation);
+    append_vector(angular_velocity_heading, observation_);
 
     // joint rotations [9:81]
     for (const auto& joint_id : joint_ids_) {
-        append_rotation(kinematics_->joint_local_rotation(joint_id), observation);
+        append_rotation(kinematics_->joint_local_rotation(joint_id), observation_);
     }
 
     // joint velocities [81:93]
     for (const auto& joint_id : joint_ids_) {
-        observation.push_back(motor_status[joint_id_to_motor_index_.at(joint_id)].velocity);
+        observation_.push_back(motor_status[joint_id_to_motor_index_.at(joint_id)].velocity);
     }
 
     // foot positions [93:99]
@@ -157,7 +169,7 @@ void olaf::Olaf::observation(std::vector<double>& observation) {
             kinematics_->frame_position(foot_frame_id) +
             kinematics_->frame_rotation(foot_frame_id) * foot_toe_offset;
 
-        append_vector(heading_R_root * toe_position, observation);
+        append_vector(heading_R_root * toe_position, observation_);
     }
 
     // read joy data
@@ -165,29 +177,18 @@ void olaf::Olaf::observation(std::vector<double>& observation) {
     joy_handler_->read(joy_data);
 
     // command [99:102]
-    observation.push_back(joy_data.stick_ly * 0.5);
-    observation.push_back(-joy_data.stick_lx * 0.5);
-    observation.push_back(-joy_data.stick_rx * 0.25);
+    observation_.push_back(joy_data.stick_ly * 0.5);
+    observation_.push_back(-joy_data.stick_lx * 0.5);
+    observation_.push_back(-joy_data.stick_rx * 0.25);
 }
 
-void olaf::Olaf::control(const std::vector<double>& observation, std::vector<double>& action) {
-
-    controller_->update(observation, action);
-
-    motor_interface::motor_command_t motor_command[4]{};
-
-    motor_command[0].kp = 0.5;
-    motor_command[0].kd = 0.1;
-    motor_command[1].kp = 0.5;
-    motor_command[1].kd = 0.1;
-    motor_command[2].kp = 10.0;
-    motor_command[2].kd = 5.0;
-    motor_command[3].kp = 10.0;
-    motor_command[3].kd = 5.0;
-
-    for (std::size_t i = 0; i < 4; ++i) {
-        motor_command[i].position = action[i];
+void arti::ArtiH1::control() {
+    if (!observation_.empty()) {
+        controller_->update(observation_, action_);
+        
+        for (std::size_t i = 0; i < 4; ++i) {
+            motor_command_[i].position = action_[i];
+        }
     }
-
-    motor_manager_->write(motor_command);
+    motor_manager_->write(motor_command_);
 }

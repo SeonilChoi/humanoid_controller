@@ -1,22 +1,22 @@
-#ifndef ROBOT_ROBOTS_OLAF_HPP_
-#define ROBOT_ROBOTS_OLAF_HPP_
+#ifndef ROBOT_ROBOTS_ARTI_H1_HPP_
+#define ROBOT_ROBOTS_ARTI_H1_HPP_
 
 #include <array>
 #include <unordered_map>
 
 #include "robot/core/robot.hpp"
 
-namespace olaf {
+namespace arti {
 
-class Olaf : public robot::Robot {
+class ArtiH1 : public robot::Robot {
 public:
-    explicit Olaf(const std::string& config_file);
+    explicit ArtiH1(const std::string& config_file);
 
-    virtual ~Olaf() = default;
+    virtual ~ArtiH1() = default;
 
-    void observation(std::vector<double>& observation) override;
+    void observation() override;
 
-    void control(const std::vector<double>& observation, std::vector<double>& action) override;
+    void control() override;
 
 private:
     std::vector<pinocchio::JointIndex> joint_ids_;
@@ -38,6 +38,6 @@ private:
     std::vector<Eigen::Vector3d> foot_toe_offsets_;
 };
 
-} // namespace olaf
+} // namespace arti
 
-#endif // ROBOT_ROBOTS_OLAF_HPP_
+#endif // ROBOT_ROBOTS_ARTI_H1_HPP_

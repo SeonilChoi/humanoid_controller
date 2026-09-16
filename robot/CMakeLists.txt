@@ -28,14 +28,14 @@ target_link_libraries(robot
         yaml-cpp
 )
 
-add_library(olaf
-    src/robots/olaf.cpp
+add_library(ARTI-H1
+    src/robots/ARTI_H1.cpp
 )
-target_include_directories(olaf
+target_include_directories(ARTI-H1
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_link_libraries(olaf
+target_link_libraries(ARTI-H1
     PUBLIC
         robot
 )

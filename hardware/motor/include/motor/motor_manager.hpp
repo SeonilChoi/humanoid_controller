@@ -29,6 +29,8 @@ public:
 
     void read(motor_interface::motor_state_t* status);
 
+    int number_of_motors() { return static_cast<int>(number_of_motors_); }
+
 private:
     void load(const std::string& config_file);
 
