@@ -27,6 +27,10 @@ public:
 
     uint32_t period() const { return period_; }
 
+    const uint8_t* ids() const { return ids_; }
+
+    uint8_t n_ids() const { return n_ids_; }
+
 protected:
     const uint32_t period_;
 

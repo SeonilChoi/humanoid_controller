@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
         command[i].kd = 0.1;
     }
     motor_interface::motor_state_t status[motor_interface::MAX_MOTORS]{};
-
+    
     motor_manager.start();
     motor_manager.write(command);
 

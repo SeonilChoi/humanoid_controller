@@ -67,10 +67,12 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     action_.clear();
 
     for (uint8_t i = 0; i < 2; ++i) {
+        motor_command_[i].id = i + 1;
         motor_command_[i].kp = 0.5;
         motor_command_[i].kd = 0.2;
     }
     for (uint8_t i = 2; i < 4; ++i) {
+        motor_command_[i].id = i + 1;
         motor_command_[i].kp = 10.0;
         motor_command_[i].kd = 5.0;
     }
@@ -87,6 +89,9 @@ void robot::ArtiH1::observation() {
     observation_.reserve(OBSERVATION_SIZE);
 
     motor_interface::motor_state_t motor_status[4]{};
+    for (uint8_t i = 0; i < 4; ++i) {
+        motor_status[i].id = i + 1;
+    }
     motor_manager_->read(motor_status);
     
     // update kinematics with current motor positions

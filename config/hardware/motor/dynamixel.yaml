@@ -5,14 +5,12 @@ masters:
     device: /dev/Dynamixel
 
     motors:
-      - index: 0
-        id: 1
+      - id: 1
         gear_ratio: 1.0
         zero_offset: 0.0
         pulse_per_revolution: 4096
 
-      - index: 1
-        id: 2
+      - id: 2
         gear_ratio: 1.0
         zero_offset: 0.0
         pulse_per_revolution: 4096

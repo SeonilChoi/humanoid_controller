@@ -70,8 +70,7 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
 
     for (const auto& m : masters) {
         const unsigned int master_id_int = m["id"].as<unsigned int>();
-	const uint8_t master_id = static_cast<uint8_t>(master_id_int);
-        
+	    const uint8_t master_id = static_cast<uint8_t>(master_id_int);
 
         if (masters_.find(master_id) != masters_.end()) {
             throw std::runtime_error("[MotorManager::load] Duplicate master ID found: " + std::to_string(master_id));
@@ -95,19 +94,14 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
         }
 
         for (const auto& motor : motors) {
-	    const unsigned int motor_index_int = motor["index"].as<unsigned int>();
-	    const uint8_t motor_index = static_cast<uint8_t>(motor_index_int);
-
-	    const unsigned int motor_id_int = motor["id"].as<unsigned int>();
-            const uint8_t motor_id = static_cast<uint8_t>(motor_id_int);
+	        const unsigned int motor_id_int = motor["id"].as<unsigned int>();
+	        const uint8_t motor_id = static_cast<uint8_t>(motor_id_int);
 	    
-	    const double gear_ratio = motor["gear_ratio"].as<double>();
+	        const double gear_ratio = motor["gear_ratio"].as<double>();
             const double zero_offset = motor["zero_offset"].as<double>();
             const uint32_t pulse_per_revolution = motor["pulse_per_revolution"].as<uint32_t>();
 
             masters_[master_id]->add_motor(motor_id, gear_ratio, zero_offset, pulse_per_revolution);
-            
-            routes_[master_id].push_back({motor_index, motor_id});
 
             number_of_motors_++;
         }
@@ -120,7 +114,8 @@ void motor_manager::MotorManager::run(uint8_t id) {
 
     try{
         auto& master = *masters_.at(id);
-        const auto& routes = routes_.at(id);
+        const uint8_t* motor_ids = master.ids();
+        const uint8_t num_ids = master.n_ids();
 
         const auto cycle = std::chrono::microseconds(master.period());
         auto next_wakeup = std::chrono::steady_clock::now();
@@ -129,28 +124,22 @@ void motor_manager::MotorManager::run(uint8_t id) {
             next_wakeup += cycle;
             std::this_thread::sleep_until(next_wakeup);
 
-            //uint8_t ids[motor_interface::MAX_MOTORS];
-            motor_interface::motor_command_t commands[motor_interface::MAX_MOTORS];
-            motor_interface::motor_state_t status[motor_interface::MAX_MOTORS];
-
-            uint8_t n = 0;
+            motor_interface::motor_command_t command[motor_interface::MAX_MOTORS]{};
+            motor_interface::motor_state_t status[motor_interface::MAX_MOTORS]{};
 
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                for (const auto& route : routes) {
-                    //ids[n] = route.motor_id;
-                    commands[n] = command_[route.motor_index];
-                    ++n;
+                for (uint8_t i = 0; i < num_ids; ++i) {
+                    command[i] = command_[motor_ids[i] - 1];
                 }
             }
 
-            //master.update(ids, n, commands, status);
-            master.update(commands, status);
+            master.update(command, status);
 
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                for (uint8_t i = 0; i < n; ++i) {
-                    status_[routes[i].motor_index] = status[i];
+                for (uint8_t i = 0; i < num_ids; ++i) {
+                    status_[motor_ids[i] - 1] = status[i];
                 }
             }
 

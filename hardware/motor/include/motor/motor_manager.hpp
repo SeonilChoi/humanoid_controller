@@ -7,7 +7,6 @@
 #include <memory>
 #include <thread>
 #include <atomic>
-#include <vector>
 #include <unordered_map>
 
 #include "motor/core/motor_interface.hpp"
@@ -39,8 +38,6 @@ private:
     std::unordered_map<uint8_t, std::unique_ptr<motor_interface::MotorMaster>> masters_;
 
     std::unordered_map<uint8_t, std::thread> threads_;
-
-    std::unordered_map<uint8_t, std::vector<motor_interface::motor_route_t>> routes_;
 
     std::mutex mutex_;
 
