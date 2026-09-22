@@ -5,12 +5,16 @@ masters:
     device: can1
 
     motors:
-      - id: 1
+      - id: 5
         gear_ratio: 36.0
         zero_offset: 0.0
         pulse_per_revolution: 65536
+        min: -2.3
+        max:  0.7854
 
-      - id: 2
+      - id: 6
         gear_ratio: 36.0
         zero_offset: 0.0
         pulse_per_revolution: 65536
+        min: -0.7854
+        max:  0.7854

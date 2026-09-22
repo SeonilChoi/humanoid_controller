@@ -33,10 +33,10 @@ int main(int argc, char* argv[])
         command[i].kd = 0.0;
     }
     motor_manager.write(command);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     motor_manager.set_zero_offset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     for (int i = 0; i < n_motors; ++i) {
         command[i].position = goal_position;

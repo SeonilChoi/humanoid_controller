@@ -24,6 +24,8 @@ public:
 
     void stop();
 
+    void set_zero_offset();
+
     void write(const motor_interface::motor_command_t* command);
 
     void read(motor_interface::motor_state_t* status);
@@ -46,6 +48,8 @@ private:
     motor_interface::motor_state_t status_[motor_interface::MAX_MOTORS]{};
 
     std::atomic<bool> running_{false};
+
+    std::atomic<bool> stopped_{false};
 
     uint8_t number_of_motors_{0};
 };

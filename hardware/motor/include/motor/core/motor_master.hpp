@@ -17,7 +17,13 @@ public:
 
     virtual ~MotorMaster() = default;
 
-    virtual void add_motor(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution) = 0;
+    void set_zero_offset(const motor_state_t* status) {
+        for (const auto& [id, driver] : drivers_) {
+            driver->set_zero_offset(status[id - 1].position);
+        }
+    }
+    
+    virtual void add_motor(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution, double min, double max) = 0;
 
     virtual void initialize() = 0;
 

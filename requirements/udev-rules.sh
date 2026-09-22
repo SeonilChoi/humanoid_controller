@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cat << 'EOF' | sudo tee /etc/udev/rules.d/99-humanoid-controller.rules
-KERNEL=="ttyACM*", ATTRS{idVendor}=="16d0", ATTRS{idProduct}=="117e", MODE="0666", SYMLINK+="CANable"
+ACTION=="add", KERNEL=="ttyACM*", SUBSYSTEM=="tty", ATTRS{idVendor}=="16d0", ATTRS{idProduct}=="117e", ATTRS{serial}=="2061317B5230", MODE="0666", SYMLINK+="CANable"
 KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ATTRS{serial}=="FTBW2W11", MODE="0666", SYMLINK+="Unitree"
 KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ATTRS{serial}=="FTBENY4L", MODE="0666", SYMLINK+="Dynamixel"
 KERNEL=="ttyUSB*", ATTRS{idVendor}=="2639", MODE="0666", SYMLINK+="Xsens"
@@ -19,9 +19,13 @@ for dev in /dev/Unitree /dev/Dynamixel /dev/CANable /dev/Xsens; do
     fi
 done
 
+# USB CANable2 is SLCAN over CDC ACM. Onboard mttcan already occupies can0,
+# so the adapter is brought up as can1.
 if [[ -e /dev/CANable ]] && command -v slcand >/dev/null 2>&1; then
+    sudo modprobe slcan 2>/dev/null || true
     if ! ip link show can1 >/dev/null 2>&1; then
         sudo slcand -o -c -s8 /dev/CANable can1
+        sleep 0.5
     fi
     sudo ip link set can1 up
 fi

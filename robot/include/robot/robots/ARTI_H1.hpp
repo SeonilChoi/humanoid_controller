@@ -14,6 +14,8 @@ public:
 
     virtual ~ArtiH1() = default;
 
+    void initialize() override;
+
     void observation() override;
 
     void control() override;

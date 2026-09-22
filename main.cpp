@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
     robot.start();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    robot.control();
+    robot.initialize();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     while (running) {

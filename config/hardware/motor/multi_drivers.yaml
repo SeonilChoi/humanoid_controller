@@ -1,0 +1,96 @@
+masters:
+  - id: 0
+    period: 8000 # microseconds
+    type: unitree
+    device: /dev/Unitree
+
+    motors:
+      - id: 1
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -0.6
+        max:  0.4
+
+      - id: 2
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3
+
+      - id: 3
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3
+
+      - id: 4
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3
+
+      - id: 7
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -0.6
+        max:  0.4
+
+      - id: 8
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3
+
+      - id: 9
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3
+
+      - id: 10
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3
+
+  - id: 1
+    period: 1000
+    type: cubemars
+    device: can1
+
+    motors:
+      - id: 5
+        gear_ratio: 36.0
+        zero_offset: 0.0
+        pulse_per_revolution: 65536
+        min: -2.3
+        max:  0.7854
+
+      - id: 6
+        gear_ratio: 36.0
+        zero_offset: 0.0
+        pulse_per_revolution: 65536
+        min: -0.7854
+        max:  0.7854
+
+      - id: 11
+        gear_ratio: 36.0
+        zero_offset: 0.0
+        pulse_per_revolution: 65536
+        min: -2.3
+        max:  0.7854
+
+      - id: 12
+        gear_ratio: 36.0
+        zero_offset: 0.0
+        pulse_per_revolution: 65536
+        min: -0.7854
+        max:  0.7854

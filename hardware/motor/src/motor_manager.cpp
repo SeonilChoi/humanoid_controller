@@ -21,6 +21,7 @@ motor_manager::MotorManager::~MotorManager() {
 }
 
 void motor_manager::MotorManager::start() {
+    stopped_.store(false);
     running_.store(true);
 
     for (auto& [id, master] : masters_) {
@@ -29,6 +30,8 @@ void motor_manager::MotorManager::start() {
 }
 
 void motor_manager::MotorManager::stop() {
+    if (stopped_.exchange(true)) return;
+
     running_.store(false);
 
     for (auto& [id, thread] : threads_) {
@@ -44,6 +47,15 @@ void motor_manager::MotorManager::stop() {
         } catch (const std::exception& e) {
             std::cerr << "[MotorManager::stop] " << e.what() << std::endl;
         }
+    }
+}
+
+void motor_manager::MotorManager::set_zero_offset() {
+    motor_interface::motor_state_t status[motor_interface::MAX_MOTORS]{};   
+    read(status);
+    
+    for (auto& [id, master] : masters_) {
+        master->set_zero_offset(status);
     }
 }
 
@@ -100,8 +112,10 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
 	        const double gear_ratio = motor["gear_ratio"].as<double>();
             const double zero_offset = motor["zero_offset"].as<double>();
             const uint32_t pulse_per_revolution = motor["pulse_per_revolution"].as<uint32_t>();
+            const double min = motor["min"].as<double>();
+            const double max = motor["max"].as<double>();
 
-            masters_[master_id]->add_motor(motor_id, gear_ratio, zero_offset, pulse_per_revolution);
+            masters_[master_id]->add_motor(motor_id, gear_ratio, zero_offset, pulse_per_revolution, min, max);
 
             number_of_motors_++;
         }

@@ -1,6 +1,6 @@
 masters:
   - id: 0
-    period: 1000 # microseconds
+    period: 8000 # microseconds
     type: unitree
     device: /dev/Unitree
 
@@ -9,8 +9,26 @@ masters:
         gear_ratio: 6.33
         zero_offset: 0.0
         pulse_per_revolution: 32768
+        min: -0.6
+        max:  0.4
 
       - id: 2
         gear_ratio: 6.33
         zero_offset: 0.0
         pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3
+
+      - id: 3
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3
+
+      - id: 4
+        gear_ratio: 6.33
+        zero_offset: 0.0
+        pulse_per_revolution: 32768
+        min: -1.0
+        max:  0.3

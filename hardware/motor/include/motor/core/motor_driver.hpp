@@ -7,13 +7,17 @@ namespace motor_interface {
 
 class MotorDriver {
 public:
-    explicit MotorDriver(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution)
+    explicit MotorDriver(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution, double min, double max)
     : id_(id),
       gear_ratio_(gear_ratio),
       zero_offset_(zero_offset),
-      pulse_per_revolution_(pulse_per_revolution) {}
+      pulse_per_revolution_(pulse_per_revolution),
+      min_(min),
+      max_(max) {}
 
     virtual ~MotorDriver() = default;
+
+    void set_zero_offset(double zero_offset) { zero_offset_ = zero_offset; }
 
     virtual std::size_t encode(const motor_command_t& command, uint8_t* buffer, std::size_t size) = 0;
 
@@ -112,9 +116,13 @@ protected:
 
     const double gear_ratio_;
 
-    const double zero_offset_;
+    double zero_offset_;
 
     const uint32_t pulse_per_revolution_;
+
+    const double min_;
+
+    const double max_;
 };
 
 } // namespace motor_interface

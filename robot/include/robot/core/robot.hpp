@@ -67,6 +67,8 @@ public:
         joy_handler_->stop();
     }
 
+    virtual void initialize() = 0;
+
     virtual void observation() = 0;
 
     virtual void control() = 0;

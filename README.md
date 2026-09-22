@@ -78,7 +78,7 @@ export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig:$PKG_CONFIG_PATH
 
 5. Install the udev rules so USB devices have the right names and permissions.
 This script uses `sudo`. After it finishes, unplug and plug in your USB devices again.
-If the devices are already plugged in, the script also sets permissions and brings up `can1`.
+If the devices are already plugged in, the script also sets permissions and brings up USB CANable as `can1`.
 ```bash
 cd ~/humanoid_controller/requirements
 ./udev-rules.sh

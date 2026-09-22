@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cstdint>
 #include <cstddef>
+#include <iostream>
 #include <stdexcept>
 
 #include <poll.h>
@@ -21,7 +22,7 @@
 namespace unitree {
 
 constexpr speed_t UNITREE_BAUDRATE = B4000000;
-constexpr auto TIMEOUT = std::chrono::microseconds(5000);
+constexpr auto TIMEOUT = std::chrono::microseconds(10000);
 
 class UnitreeMaster : public motor_interface::MotorMaster {
 public:
@@ -35,8 +36,8 @@ public:
         }
     }
 
-    void add_motor(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution) override {
-        drivers_[id] = std::make_unique<unitree::UnitreeDriver>(id, gear_ratio, zero_offset, pulse_per_revolution);
+    void add_motor(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution, double min, double max) override {
+        drivers_[id] = std::make_unique<unitree::UnitreeDriver>(id, gear_ratio, zero_offset, pulse_per_revolution, min, max);
         ids_[n_ids_++] = id;
     }
 
@@ -69,17 +70,24 @@ public:
     }
 
     void shutdown() override {
+        if (fd_ >= 0) ::tcflush(fd_, TCIOFLUSH);
+
         for (auto& [id, driver] : drivers_) {
-            uint8_t tx[TX_PACKET_SIZE]{};
-            const std::size_t tx_size = driver->disable(tx, sizeof(tx));
+            try {
+                uint8_t tx[TX_PACKET_SIZE]{};
+                const std::size_t tx_size = driver->disable(tx, sizeof(tx));
 
-            send_packet(tx, tx_size);
+                send_packet(tx, tx_size);
 
-            uint8_t rx[RX_PACKET_SIZE]{};
-            const std::size_t rx_size = receive_packet(rx, sizeof(rx));
+                uint8_t rx[RX_PACKET_SIZE]{};
+                const std::size_t rx_size = receive_packet(rx, sizeof(rx));
 
-            motor_interface::motor_state_t status{};
-            driver->decode(rx, rx_size, status);
+                motor_interface::motor_state_t status{};
+                driver->decode(rx, rx_size, status);
+            } catch (const std::exception& e) {
+                std::cerr << "[UnitreeMaster::shutdown] id " << static_cast<int>(id)
+                          << ": " << e.what() << std::endl;
+            }
         }
     }
 
@@ -121,16 +129,13 @@ private:
             }
             throw std::runtime_error("[UnitreeMaster::send_packet] Failed to write serial data");
         }
+
+        ::tcdrain(fd_);
     }
 
-    std::size_t receive_packet(uint8_t* rx, std::size_t size) {
-        std::size_t total = 0;
-
-        const auto deadline = std::chrono::steady_clock::now() + TIMEOUT;
-
-        while (total < size) {
+    void wait_readable(std::chrono::steady_clock::time_point deadline) {
+        while (true) {
             const auto now = std::chrono::steady_clock::now();
-
             if (now >= deadline) throw std::runtime_error("[UnitreeMaster::receive_packet] timeout.");
 
             const auto remaining = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline - now);
@@ -151,9 +156,21 @@ private:
 
             if (ret == 0) throw std::runtime_error("[UnitreeMaster::receive_packet] timeout.");
 
-            if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) throw std::runtime_error("[UnitreeMaster::receive_packet] serial error.");
+            if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+                throw std::runtime_error("[UnitreeMaster::receive_packet] serial error.");
+            }
 
-            const ssize_t received = ::read(fd_, rx + total, size - total);
+            return;
+        }
+    }
+
+    std::size_t read_bytes(uint8_t* buffer, std::size_t size, std::chrono::steady_clock::time_point deadline) {
+        std::size_t total = 0;
+
+        while (total < size) {
+            wait_readable(deadline);
+
+            const ssize_t received = ::read(fd_, buffer + total, size - total);
 
             if (received > 0) {
                 total += static_cast<std::size_t>(received);
@@ -167,6 +184,31 @@ private:
         }
 
         return total;
+    }
+
+    std::size_t receive_packet(uint8_t* rx, std::size_t size) {
+        if (size < 2) throw std::runtime_error("[UnitreeMaster::receive_packet] Invalid buffer size.");
+
+        const auto deadline = std::chrono::steady_clock::now() + TIMEOUT;
+
+        bool saw_header = false;
+        while (!saw_header) {
+            uint8_t byte{};
+            read_bytes(&byte, 1, deadline);
+
+            if (byte != 0xFD) continue;
+
+            read_bytes(&byte, 1, deadline);
+            if (byte == 0xEE) {
+                saw_header = true;
+            }
+        }
+
+        rx[0] = 0xFD;
+        rx[1] = 0xEE;
+        read_bytes(rx + 2, size - 2, deadline);
+
+        return size;
     }
 
     std::string device_;

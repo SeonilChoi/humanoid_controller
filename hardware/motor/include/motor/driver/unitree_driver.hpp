@@ -21,8 +21,8 @@ constexpr double PI = 3.14159265358979323846;
 
 class UnitreeDriver : public motor_interface::MotorDriver {
 public:
-    UnitreeDriver(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution)
-    : motor_interface::MotorDriver(id, gear_ratio, zero_offset, pulse_per_revolution) {
+    UnitreeDriver(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution, double min, double max)
+    : motor_interface::MotorDriver(id, gear_ratio, zero_offset, pulse_per_revolution, min, max) {
         if (id > 14) throw std::runtime_error("[UnitreeDriver::UnitreeDriver] Motor ID must be 0-14.");
     }
 
@@ -132,7 +132,7 @@ private:
     }
 
     int32_t position(const double& value) {
-        double position = (value + zero_offset_) * gear_ratio_;
+        double position = (clamp(value, min_, max_) + zero_offset_) * gear_ratio_;
         return static_cast<int32_t>(position / (PI * 2) * pulse_per_revolution_);
     }
 
