@@ -30,8 +30,8 @@ constexpr double KD_MAX = 5.0;
 
 class CubemarsDriver : public motor_interface::MotorDriver {
 public:
-    CubemarsDriver(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution, double min, double max)
-    : motor_interface::MotorDriver(id, gear_ratio, zero_offset, pulse_per_revolution, min, max) {}
+    CubemarsDriver(uint8_t id, double gear_ratio, int8_t axis, double offset, uint32_t pulse_per_revolution, double min, double max)
+    : motor_interface::MotorDriver(id, gear_ratio, axis, offset, pulse_per_revolution, min, max) {}
 
     virtual ~CubemarsDriver() = default;
 
@@ -116,16 +116,21 @@ private:
     }
 
     uint16_t position(const double& value) {
-        const double position = clamp(value, min_, max_) + zero_offset_;
+        double position;
+        if (zero_offset_ == -10.0) {
+            position = clamp(value * axis_, min_, max_);
+        } else {
+            position = clamp(value * axis_, min_, max_) + (offset_ + zero_offset_) * axis_;
+        }
         return float_to_uint(position, POSITION_MIN, POSITION_MAX, 16);
     }
 
     uint16_t velocity(const double& value) {
-        return float_to_uint(value, VELOCITY_MIN, VELOCITY_MAX, 12);
+        return float_to_uint(value * axis_, VELOCITY_MIN, VELOCITY_MAX, 12);
     }
 
     uint16_t torque(const double& value) {
-        return float_to_uint(value, TORQUE_MIN, TORQUE_MAX, 12);
+        return float_to_uint(value * axis_, TORQUE_MIN, TORQUE_MAX, 12);
     }
 
     uint16_t kp(const double& value) {
@@ -138,15 +143,19 @@ private:
 
     double position(const uint16_t& value) {
         const double position = uint_to_float(value, POSITION_MIN, POSITION_MAX, 16);
-        return position - zero_offset_;
+        if (zero_offset_ == -10.0) {
+            return position * axis_;
+        } else {
+            return position * axis_ - (offset_ + zero_offset_);
+        }
     }
 
     double velocity(const uint16_t& value) {
-        return uint_to_float(value, VELOCITY_MIN, VELOCITY_MAX, 12);
+        return uint_to_float(value, VELOCITY_MIN, VELOCITY_MAX, 12) * axis_;
     }
 
     double torque(const uint16_t& value) {
-        return uint_to_float(value, TORQUE_MIN, TORQUE_MAX, 12);
+        return uint_to_float(value, TORQUE_MIN, TORQUE_MAX, 12) * axis_;
     }
 };
 

@@ -27,14 +27,22 @@ int main(int argc, char* argv[])
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     robot.initialize();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
+    constexpr auto kControlPeriod = std::chrono::microseconds(1'000'000 / 60);
+    auto next_wakeup = std::chrono::steady_clock::now();
 
     while (running) {
         robot.observation();
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    
         robot.control();
+
+        next_wakeup += kControlPeriod;
+        const auto now = std::chrono::steady_clock::now();
+        if (next_wakeup < now) {
+            next_wakeup = now;
+        } else {
+            std::this_thread::sleep_until(next_wakeup);
+        }
     }
 
     robot.stop();

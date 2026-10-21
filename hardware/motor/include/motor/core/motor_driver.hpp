@@ -7,10 +7,11 @@ namespace motor_interface {
 
 class MotorDriver {
 public:
-    explicit MotorDriver(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution, double min, double max)
+    explicit MotorDriver(uint8_t id, double gear_ratio, int8_t axis, double offset,uint32_t pulse_per_revolution, double min, double max)
     : id_(id),
       gear_ratio_(gear_ratio),
-      zero_offset_(zero_offset),
+      axis_(axis),
+      offset_(offset),
       pulse_per_revolution_(pulse_per_revolution),
       min_(min),
       max_(max) {}
@@ -116,7 +117,11 @@ protected:
 
     const double gear_ratio_;
 
-    double zero_offset_;
+    const double offset_;
+
+    const int8_t axis_;
+
+    double zero_offset_{-10.0};
 
     const uint32_t pulse_per_revolution_;
 

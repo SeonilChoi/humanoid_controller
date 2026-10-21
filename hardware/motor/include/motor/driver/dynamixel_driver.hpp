@@ -26,8 +26,8 @@ constexpr double PI = 3.14159265358979323846;
 
 class DynamixelDriver : public motor_interface::MotorDriver {
 public:
-    DynamixelDriver(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution, double min, double max)
-    : motor_interface::MotorDriver(id, gear_ratio, zero_offset, pulse_per_revolution, min, max) {
+    DynamixelDriver(uint8_t id, double gear_ratio, int8_t axis, double offset, uint32_t pulse_per_revolution, double min, double max)
+    : motor_interface::MotorDriver(id, gear_ratio, axis, offset, pulse_per_revolution, min, max) {
         if (id > 252) throw std::runtime_error("[DynamixelDriver] Motor ID must be 0-252.");
     }
 
@@ -80,21 +80,30 @@ public:
 
 private:
     int32_t position(const double& value) {
-        const double motor = (clamp(value, min_, max_) + zero_offset_) * gear_ratio_;
+        double motor;
+        if (zero_offset_ == -10.0) {
+            motor = clamp(value * axis_, min_, max_) * gear_ratio_;
+        } else {
+            motor = (clamp(value * axis_, min_, max_) + offset_ + zero_offset_) * gear_ratio_;
+        }
         return static_cast<int32_t>(motor / (PI * 2.0) * pulse_per_revolution_);
     }
     double position(const int32_t& value) {
         const double motor = static_cast<double>(value) / pulse_per_revolution_ * (PI * 2.0);
-        return motor / gear_ratio_ - zero_offset_;
+        if (zero_offset_ == -10.0) {
+            return motor / gear_ratio_ * axis_;
+        } else {
+            return motor / gear_ratio_ * axis_ - (offset_ + zero_offset_);
+        }
     }
     double velocity(const int32_t& value) {
         const double rpm = static_cast<double>(value) * XM430_VELOCITY_UNIT;
         const double motor = rpm * (PI * 2.0) / 60.0;
-        return motor / gear_ratio_;
+        return motor / gear_ratio_ * axis_;
     }
     double torque(const int16_t& value) {
         const double current = static_cast<double>(value) * XM430_CURRENT_UNIT;
-        return current * gear_ratio_;
+        return current * gear_ratio_ * axis_;
     }
 };
 

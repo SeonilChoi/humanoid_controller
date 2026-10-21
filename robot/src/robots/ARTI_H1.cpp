@@ -22,6 +22,21 @@ constexpr std::size_t NUM_JOINTS = 12;
 constexpr std::size_t OBSERVATION_SIZE = 102;
 constexpr double PI = 3.14159265358979323846;
 
+constexpr const char* kPolicyJointNames[NUM_JOINTS] = {
+    "left_hip_yaw",
+    "right_hip_yaw",
+    "left_hip_roll",
+    "right_hip_roll",
+    "left_hip_pitch",
+    "right_hip_pitch",
+    "left_knee",
+    "right_knee",
+    "left_ankle_pitch",
+    "right_ankle_pitch",
+    "left_ankle_roll",
+    "right_ankle_roll",
+};
+
 void append_vector(const Eigen::Vector3d& value, std::vector<double>& vector) {
     vector.push_back(value.x());
     vector.push_back(value.y());
@@ -68,9 +83,13 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     observation_.clear();
     action_.clear();
 
-    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
-        motor_command_[i].kp = 0.5;
+    for (std::size_t i = 0; i < 8; ++i) {
+        motor_command_[i].kp = 4.0;
         motor_command_[i].kd = 0.2;
+    }
+    for (std::size_t i = 8; i < 12; ++i) {
+        motor_command_[i].kp = 10.0;
+        motor_command_[i].kd = 5.0;
     }
 }
 
@@ -81,40 +100,36 @@ void robot::ArtiH1::initialize() {
         motor_command_[i].kd = 0.0;
     }
     motor_manager_->write(motor_command_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     
     motor_manager_->set_zero_offset();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
-        motor_command_[i].kp = 0.5;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    for (std::size_t i = 0; i < 8; ++i) {
+        motor_command_[i].kp = 4.0;
         motor_command_[i].kd = 0.2;
+    }
+    for (std::size_t i = 8; i < 12; ++i) {
+        motor_command_[i].kp = 10.0;
+        motor_command_[i].kd = 5.0;
     }
     motor_manager_->write(motor_command_);
 }
 
 void robot::ArtiH1::observation() {
-    // read motor status
-    /*
-    motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
-    motor_manager_->read(motor_status);
-    */
-
     observation_.clear();
     observation_.reserve(OBSERVATION_SIZE);
 
-    motor_interface::motor_state_t motor_status[4]{};
+    motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
     motor_manager_->read(motor_status);
     
     // update kinematics with current motor positions
     Eigen::VectorXd joint_positions = Eigen::VectorXd::Zero(NUM_JOINTS);
 
-    /*
     for (const auto& joint_id : joint_ids_) {
         const int joint_index = kinematics_->joint_index(joint_id);
         joint_positions[joint_index] = motor_status[joint_id_to_motor_index_.at(joint_id)].position;
     }
-    */
 
     kinematics_->update(joint_positions);
 
@@ -168,13 +183,15 @@ void robot::ArtiH1::observation() {
     // body angular velocity in heading frame [6:9]
     append_vector(angular_velocity_heading, observation_);
 
-    // joint rotations [9:81]
-    for (const auto& joint_id : joint_ids_) {
+    // joint rotations [9:81], policy order
+    for (const char* name : kPolicyJointNames) {
+        const auto joint_id = kinematics_->joint_id(name);
         append_rotation(kinematics_->joint_local_rotation(joint_id), observation_);
     }
 
-    // joint velocities [81:93]
-    for (const auto& joint_id : joint_ids_) {
+    // joint velocities [81:93], policy order
+    for (const char* name : kPolicyJointNames) {
+        const auto joint_id = kinematics_->joint_id(name);
         observation_.push_back(motor_status[joint_id_to_motor_index_.at(joint_id)].velocity);
     }
 
@@ -195,17 +212,18 @@ void robot::ArtiH1::observation() {
     joy_handler_->read(joy_data);
 
     // command [99:102]
-    observation_.push_back(joy_data.stick_ly * 0.5);
-    observation_.push_back(-joy_data.stick_lx * 0.5);
-    observation_.push_back(-joy_data.stick_rx * 0.25);
+    observation_.push_back(joy_data.stick_ly * 0.05);
+    observation_.push_back(-joy_data.stick_lx * 0.05);
+    observation_.push_back(-joy_data.stick_rx * 0.025);
 }
 
 void robot::ArtiH1::control() {
     if (!observation_.empty()) {
         controller_->update(observation_, action_);
-        
-        for (std::size_t i = 0; i < 4; ++i) {
-            motor_command_[i].position = action_[i];
+        for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+            const auto joint_id = kinematics_->joint_id(kPolicyJointNames[i]);
+            const auto motor_index = joint_id_to_motor_index_.at(joint_id);
+            motor_command_[motor_index].position = action_[i];
         }
     }
     motor_manager_->write(motor_command_);

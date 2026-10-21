@@ -23,7 +23,7 @@ public:
         }
     }
     
-    virtual void add_motor(uint8_t id, double gear_ratio, double zero_offset, uint32_t pulse_per_revolution, double min, double max) = 0;
+    virtual void add_motor(uint8_t id, double gear_ratio, int8_t axis, double offset, uint32_t pulse_per_revolution, double min, double max) = 0;
 
     virtual void initialize() = 0;
 

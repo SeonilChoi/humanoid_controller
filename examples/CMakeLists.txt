@@ -10,6 +10,9 @@ target_link_libraries(example_dynamixel PRIVATE motor)
 add_executable(example_multi_drivers src/hardware/motor/example_multi_drivers.cpp)
 target_link_libraries(example_multi_drivers PRIVATE motor)
 
+add_executable(example_action src/hardware/motor/example_action.cpp)
+target_link_libraries(example_action PRIVATE motor yaml-cpp)
+
 add_executable(example_xsens src/hardware/sensor/example_xsens.cpp)
 target_link_libraries(example_xsens PRIVATE sensor)
 

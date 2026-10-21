@@ -36,13 +36,29 @@ int main(int argc, char* argv[])
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     motor_manager.set_zero_offset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-    for (int i = 0; i < n_motors; ++i) {
+    /*
+    for (int i = 0; i < 8; ++i) {
+        command[i].position = goal_position;
+        command[i].kp = 0.5;
+        command[i].kd = 0.2;
+    }
+    for (int i = 8; i < 12; ++i) {
+        command[i].position = goal_position;
+        command[i].kp = 10.0;
+        command[i].kd = 5.0;
+    }
+    */
+    
+    ///*
+    for (int i = 0; i < 12; ++i) {
         command[i].position = goal_position;
         command[i].kp = 0.0;
         command[i].kd = 0.0;
     }
+    //*/
+    
     motor_manager.write(command);
 
     motor_interface::motor_state_t status[motor_interface::MAX_MOTORS]{};
@@ -52,8 +68,9 @@ int main(int argc, char* argv[])
 
         motor_manager.read(status);
         for (int i = 0; i < n_motors; ++i) {
-            std::cout << "Motor Index: " << i << " Position: " << status[i].position << std::endl;
+            std::cout << "Motor ID: " << i + 1 << " Position: " << status[i].position << std::endl;
         }
+
         std::cout << std::endl;
 
     }
