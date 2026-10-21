@@ -21,6 +21,8 @@ public:
     void control() override;
 
 private:
+    void home(uint8_t index);
+
     std::vector<pinocchio::JointIndex> joint_ids_;
 
     std::unordered_map<pinocchio::JointIndex, uint8_t> joint_id_to_motor_index_;

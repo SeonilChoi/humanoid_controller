@@ -23,6 +23,7 @@ namespace unitree {
 
 constexpr speed_t UNITREE_BAUDRATE = B4000000;
 constexpr auto TIMEOUT = std::chrono::microseconds(10000);
+constexpr int MAX_CONSECUTIVE_FAILURES = 5;
 
 class UnitreeMaster : public motor_interface::MotorMaster {
 public:
@@ -36,8 +37,8 @@ public:
         }
     }
 
-    void add_motor(uint8_t id, double gear_ratio, int8_t axis, double offset, uint32_t pulse_per_revolution, double min, double max) override {
-        drivers_[id] = std::make_unique<unitree::UnitreeDriver>(id, gear_ratio, axis, offset, pulse_per_revolution, min, max);
+    void add_motor(uint8_t id, double gear_ratio, int8_t axis, uint32_t pulse_per_revolution, double min, double max) override {
+        drivers_[id] = std::make_unique<unitree::UnitreeDriver>(id, gear_ratio, axis, pulse_per_revolution, min, max);
         ids_[n_ids_++] = id;
     }
 
@@ -101,10 +102,19 @@ public:
 
             send_packet(tx, tx_size);
 
-            uint8_t rx[RX_PACKET_SIZE]{};
-            const std::size_t rx_size = receive_packet(rx, sizeof(rx));
+            // a missed reply keeps the previous status, only repeated misses are fatal
+            try {
+                uint8_t rx[RX_PACKET_SIZE]{};
+                const std::size_t rx_size = receive_packet(rx, sizeof(rx));
 
-            driver.decode(rx, rx_size, status[i]);
+                driver.decode(rx, rx_size, status[i]);
+                failures_[i] = 0;
+            } catch (const std::exception& e) {
+                if (++failures_[i] >= MAX_CONSECUTIVE_FAILURES) throw;
+
+                std::cerr << "[UnitreeMaster::update] id " << static_cast<int>(id) << ": " << e.what() << std::endl;
+                ::tcflush(fd_, TCIFLUSH);
+            }
         }
     }
 
@@ -214,6 +224,8 @@ private:
     std::string device_;
 
     int fd_{-1};
+
+    int failures_[motor_interface::MAX_MOTORS]{};
 };
 
 }

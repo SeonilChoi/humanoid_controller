@@ -30,8 +30,8 @@ constexpr double KD_MAX = 5.0;
 
 class CubemarsDriver : public motor_interface::MotorDriver {
 public:
-    CubemarsDriver(uint8_t id, double gear_ratio, int8_t axis, double offset, uint32_t pulse_per_revolution, double min, double max)
-    : motor_interface::MotorDriver(id, gear_ratio, axis, offset, pulse_per_revolution, min, max) {}
+    CubemarsDriver(uint8_t id, double gear_ratio, int8_t axis, uint32_t pulse_per_revolution, double min, double max)
+    : motor_interface::MotorDriver(id, gear_ratio, axis, pulse_per_revolution, min, max) {}
 
     virtual ~CubemarsDriver() = default;
 
@@ -118,9 +118,9 @@ private:
     uint16_t position(const double& value) {
         double position;
         if (zero_offset_ == -10.0) {
-            position = clamp(value * axis_, min_, max_);
+            position = value * axis_;
         } else {
-            position = clamp(value * axis_, min_, max_) + (offset_ + zero_offset_) * axis_;
+            position = clamp(value * axis_, min_, max_) + zero_offset_ * axis_;
         }
         return float_to_uint(position, POSITION_MIN, POSITION_MAX, 16);
     }
@@ -146,7 +146,7 @@ private:
         if (zero_offset_ == -10.0) {
             return position * axis_;
         } else {
-            return position * axis_ - (offset_ + zero_offset_);
+            return position * axis_ - zero_offset_;
         }
     }
 

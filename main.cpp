@@ -24,25 +24,32 @@ int main(int argc, char* argv[])
     robot::ArtiH1 robot(config_file);
 
     robot.start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    robot.initialize();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    try {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    constexpr auto kControlPeriod = std::chrono::microseconds(1'000'000 / 60);
-    auto next_wakeup = std::chrono::steady_clock::now();
+        robot.initialize();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
-    while (running) {
-        robot.observation();
-        robot.control();
+        constexpr auto kControlPeriod = std::chrono::microseconds(1'000'000 / 60);
+        auto next_wakeup = std::chrono::steady_clock::now();
 
-        next_wakeup += kControlPeriod;
-        const auto now = std::chrono::steady_clock::now();
-        if (next_wakeup < now) {
-            next_wakeup = now;
-        } else {
-            std::this_thread::sleep_until(next_wakeup);
+        while (running) {
+            robot.observation();
+            robot.control();
+
+            next_wakeup += kControlPeriod;
+            const auto now = std::chrono::steady_clock::now();
+            if (next_wakeup < now) {
+                next_wakeup = now;
+            } else {
+                std::this_thread::sleep_until(next_wakeup);
+            }
         }
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        robot.stop();
+        return 1;
     }
 
     robot.stop();

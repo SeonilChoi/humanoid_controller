@@ -30,8 +30,8 @@ public:
         }
     }
 
-    void add_motor(uint8_t id, double gear_ratio, int8_t axis, double offset, uint32_t pulse_per_revolution, double min, double max) override {
-        drivers_[id] = std::make_unique<cubemars::CubemarsDriver>(id, gear_ratio, axis, offset, pulse_per_revolution, min, max);
+    void add_motor(uint8_t id, double gear_ratio, int8_t axis, uint32_t pulse_per_revolution, double min, double max) override {
+        drivers_[id] = std::make_unique<cubemars::CubemarsDriver>(id, gear_ratio, axis, pulse_per_revolution, min, max);
         ids_[n_ids_++] = id;
     }
 

@@ -22,8 +22,12 @@ public:
             driver->set_zero_offset(status[id - 1].position);
         }
     }
+
+    void set_zero_offset(uint8_t id, double zero_offset) {
+        drivers_.at(id)->set_zero_offset(zero_offset);
+    }
     
-    virtual void add_motor(uint8_t id, double gear_ratio, int8_t axis, double offset, uint32_t pulse_per_revolution, double min, double max) = 0;
+    virtual void add_motor(uint8_t id, double gear_ratio, int8_t axis, uint32_t pulse_per_revolution, double min, double max) = 0;
 
     virtual void initialize() = 0;
 

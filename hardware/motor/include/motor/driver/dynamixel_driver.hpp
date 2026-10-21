@@ -26,8 +26,8 @@ constexpr double PI = 3.14159265358979323846;
 
 class DynamixelDriver : public motor_interface::MotorDriver {
 public:
-    DynamixelDriver(uint8_t id, double gear_ratio, int8_t axis, double offset, uint32_t pulse_per_revolution, double min, double max)
-    : motor_interface::MotorDriver(id, gear_ratio, axis, offset, pulse_per_revolution, min, max) {
+    DynamixelDriver(uint8_t id, double gear_ratio, int8_t axis, uint32_t pulse_per_revolution, double min, double max)
+    : motor_interface::MotorDriver(id, gear_ratio, axis, pulse_per_revolution, min, max) {
         if (id > 252) throw std::runtime_error("[DynamixelDriver] Motor ID must be 0-252.");
     }
 
@@ -82,9 +82,9 @@ private:
     int32_t position(const double& value) {
         double motor;
         if (zero_offset_ == -10.0) {
-            motor = clamp(value * axis_, min_, max_) * gear_ratio_;
+            motor = value * axis_ * gear_ratio_;
         } else {
-            motor = (clamp(value * axis_, min_, max_) + offset_ + zero_offset_) * gear_ratio_;
+            motor = (clamp(value * axis_, min_, max_) + zero_offset_) * gear_ratio_;
         }
         return static_cast<int32_t>(motor / (PI * 2.0) * pulse_per_revolution_);
     }
@@ -93,7 +93,7 @@ private:
         if (zero_offset_ == -10.0) {
             return motor / gear_ratio_ * axis_;
         } else {
-            return motor / gear_ratio_ * axis_ - (offset_ + zero_offset_);
+            return motor / gear_ratio_ * axis_ - zero_offset_;
         }
     }
     double velocity(const int32_t& value) {

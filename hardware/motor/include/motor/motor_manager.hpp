@@ -26,11 +26,17 @@ public:
 
     void set_zero_offset();
 
+    void set_homing_offset(uint8_t index);
+
     void write(const motor_interface::motor_command_t* command);
 
     void read(motor_interface::motor_state_t* status);
 
     int number_of_motors() { return static_cast<int>(number_of_motors_); }
+
+    bool is_running() const { return running_.load(); }
+
+    const motor_interface::motor_homing_t& homing(uint8_t index) const { return homing_[index]; }
 
 private:
     void load(const std::string& config_file);
@@ -46,6 +52,10 @@ private:
     motor_interface::motor_command_t command_[motor_interface::MAX_MOTORS]{};
 
     motor_interface::motor_state_t status_[motor_interface::MAX_MOTORS]{};
+
+    motor_interface::motor_homing_t homing_[motor_interface::MAX_MOTORS]{};
+
+    uint8_t master_ids_[motor_interface::MAX_MOTORS]{};
 
     std::atomic<bool> running_{false};
 

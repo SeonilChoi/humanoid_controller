@@ -1,4 +1,5 @@
 #include <cmath>
+#include <string>
 #include <thread>
 #include <chrono>
 #include <iostream>
@@ -21,6 +22,15 @@ namespace {
 constexpr std::size_t NUM_JOINTS = 12;
 constexpr std::size_t OBSERVATION_SIZE = 102;
 constexpr double PI = 3.14159265358979323846;
+
+constexpr auto HOMING_PERIOD = std::chrono::milliseconds(10);
+constexpr auto HOMING_SETTLE_TIME = std::chrono::milliseconds(500);
+constexpr auto HOMING_TIMEOUT = std::chrono::seconds(15);
+constexpr int HOMING_STALL_COUNT = 10;
+constexpr double HOMING_MAX_LEAD = 0.15;
+constexpr double HOMING_VELOCITY_FILTER = 0.2;
+constexpr double HOMING_ZERO_TOLERANCE = 0.03;
+constexpr auto HOMING_ZERO_TIMEOUT = std::chrono::seconds(3);
 
 constexpr const char* kPolicyJointNames[NUM_JOINTS] = {
     "left_hip_yaw",
@@ -84,35 +94,154 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     action_.clear();
 
     for (std::size_t i = 0; i < 8; ++i) {
-        motor_command_[i].kp = 4.0;
-        motor_command_[i].kd = 0.2;
+        motor_command_[i].kp = 0.0;
+        motor_command_[i].kd = 0.0;
     }
     for (std::size_t i = 8; i < 12; ++i) {
-        motor_command_[i].kp = 10.0;
-        motor_command_[i].kd = 5.0;
+        motor_command_[i].kp = 0.0;
+        motor_command_[i].kd = 0.0;
     }
 }
 
 void robot::ArtiH1::initialize() {
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
-        motor_command_[i].position = 0.0;
-        motor_command_[i].kp = 0.0;
-        motor_command_[i].kd = 0.0;
+        motor_command_[i] = motor_interface::motor_command_t{};
     }
     motor_manager_->write(motor_command_);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-    motor_manager_->set_zero_offset();
 
+    for (const auto& motor : motors_) {
+        home(motor.index);
+    }
+
+    // homing offsets are not calibrated yet (0.0), so all motors stay passive (kp = kd = 0)
+}
+
+void robot::ArtiH1::home(uint8_t index) {
+    const auto& homing = motor_manager_->homing(index);
+    const double dt = std::chrono::duration<double>(HOMING_PERIOD).count();
+
+    motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
+    motor_manager_->read(motor_status);
+
+    // only the homing motor is driven, the others stay passive (kp = kd = 0)
+    double target = motor_status[index].position;
+    motor_command_[index].position = target;
+    motor_command_[index].kp = homing.kp;
+    motor_command_[index].kd = homing.kd;
+    motor_manager_->write(motor_command_);
+
+    double velocity = 0.0;
+    int stall_count = 0;
+    int debug_count = 0;
+
+    const auto start = std::chrono::steady_clock::now();
+    auto next_wakeup = start;
+
+    while (stall_count < HOMING_STALL_COUNT) {
+        next_wakeup += HOMING_PERIOD;
+        std::this_thread::sleep_until(next_wakeup);
+        if (!motor_manager_->is_running()) {
+            throw std::runtime_error("[ArtiH1::home] Motor communication stopped on motor index " + std::to_string(index) + ".");
+        }
+
+        const auto elapsed = std::chrono::steady_clock::now() - start;
+        if (elapsed > HOMING_TIMEOUT) {
+            motor_command_[index] = motor_interface::motor_command_t{};
+            motor_manager_->write(motor_command_);
+            throw std::runtime_error("[ArtiH1::home] Timeout on motor index " + std::to_string(index) + ".");
+        }
+
+        motor_manager_->read(motor_status);
+        const double position = motor_status[index].position;
+
+        // move the target slowly, but never more than HOMING_MAX_LEAD ahead of the motor,
+        // so the force at the stopper stays around kp * HOMING_MAX_LEAD
+        target += homing.direction * homing.velocity * dt;
+        if (homing.direction * (target - position) > HOMING_MAX_LEAD) {
+            target = position + homing.direction * HOMING_MAX_LEAD;
+        }
+        motor_command_[index].position = target;
+        motor_manager_->write(motor_command_);
+
+        // stalled against the stopper: pushing in the homing direction but not moving
+        velocity += HOMING_VELOCITY_FILTER * (motor_status[index].velocity - velocity);
+        const double torque = motor_status[index].torque * homing.direction;
+
+        if (++debug_count % 10 == 0) {
+            std::cout << "[ArtiH1::home] index " << static_cast<int>(index)
+                      << " target " << target
+                      << " position " << position
+                      << " velocity " << velocity
+                      << " torque " << motor_status[index].torque << std::endl;
+        }
+
+        if (elapsed > HOMING_SETTLE_TIME &&
+            torque >= homing.torque_threshold &&
+            std::abs(velocity) <= homing.velocity_threshold) {
+            ++stall_count;
+        } else {
+            stall_count = 0;
+        }
+    }
+
+    motor_command_[index] = motor_interface::motor_command_t{};
+    motor_manager_->write(motor_command_);
+
+    motor_manager_->set_homing_offset(index);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    for (std::size_t i = 0; i < 8; ++i) {
-        motor_command_[i].kp = 4.0;
-        motor_command_[i].kd = 0.2;
+
+    std::cout << "[ArtiH1::home] Motor index " << static_cast<int>(index) << " homed." << std::endl;
+
+    // move from the stopper (homing offset) to 0.0
+    motor_manager_->read(motor_status);
+    target = motor_status[index].position;
+
+    motor_command_[index].position = target;
+    motor_command_[index].kp = homing.zero_kp;
+    motor_command_[index].kd = homing.zero_kd;
+    motor_manager_->write(motor_command_);
+
+    const double step = homing.velocity * dt;
+    next_wakeup = std::chrono::steady_clock::now();
+
+    while (target != 0.0) {
+        next_wakeup += HOMING_PERIOD;
+        std::this_thread::sleep_until(next_wakeup);
+        if (!motor_manager_->is_running()) {
+            throw std::runtime_error("[ArtiH1::home] Motor communication stopped on motor index " + std::to_string(index) + ".");
+        }
+
+        target = std::abs(target) <= step ? 0.0 : target - std::copysign(step, target);
+        motor_command_[index].position = target;
+        motor_manager_->write(motor_command_);
     }
-    for (std::size_t i = 8; i < 12; ++i) {
-        motor_command_[i].kp = 10.0;
-        motor_command_[i].kd = 5.0;
+
+    // wait until the motor actually reaches 0.0
+    const auto zero_start = std::chrono::steady_clock::now();
+
+    while (true) {
+        std::this_thread::sleep_for(HOMING_PERIOD);
+        if (!motor_manager_->is_running()) {
+            throw std::runtime_error("[ArtiH1::home] Motor communication stopped on motor index " + std::to_string(index) + ".");
+        }
+
+        motor_manager_->read(motor_status);
+
+        if (std::abs(motor_status[index].position) <= HOMING_ZERO_TOLERANCE) break;
+
+        if (std::chrono::steady_clock::now() - zero_start > HOMING_ZERO_TIMEOUT) {
+            motor_command_[index] = motor_interface::motor_command_t{};
+            motor_manager_->write(motor_command_);
+            throw std::runtime_error("[ArtiH1::home] Motor index " + std::to_string(index) +
+                                     " did not reach zero, position " + std::to_string(motor_status[index].position) + ".");
+        }
     }
+
+    std::cout << "[ArtiH1::home] Motor index " << static_cast<int>(index)
+              << " moved to zero, position " << motor_status[index].position << std::endl;
+
+    motor_command_[index] = motor_interface::motor_command_t{};
     motor_manager_->write(motor_command_);
 }
 
