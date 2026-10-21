@@ -12,6 +12,8 @@ masters:
         pulse_per_revolution: 32768
         min: -0.5
         max:  0.5
+        homing_direction: -1
+        homing_offset: 0.0
 
       - id: 2
         gear_ratio: 6.33
@@ -20,6 +22,8 @@ masters:
         pulse_per_revolution: 32768
         min: -0.5
         max:  0.5
+        homing_direction: 1
+        homing_offset: 0.0
 
       - id: 3
         gear_ratio: 6.33
@@ -28,6 +32,8 @@ masters:
         pulse_per_revolution: 32768
         min: -0.5
         max:  0.5
+        homing_direction: -1
+        homing_offset: 0.0
 
       - id: 4
         gear_ratio: 6.33
@@ -36,6 +42,8 @@ masters:
         pulse_per_revolution: 32768
         min: -0.5
         max:  0.5
+        homing_direction: -1
+        homing_offset: 0.0
 
       - id: 5
         gear_ratio: 6.33
@@ -44,6 +52,8 @@ masters:
         pulse_per_revolution: 32768
         min: -0.5
         max:  0.5
+        homing_direction: -1
+        homing_offset: 0.0
 
       - id: 6
         gear_ratio: 6.33
@@ -52,6 +62,8 @@ masters:
         pulse_per_revolution: 32768
         min: -0.5
         max:  0.5
+        homing_direction: -1
+        homing_offset: 0.0
 
       - id: 7
         gear_ratio: 6.33
@@ -60,6 +72,8 @@ masters:
         pulse_per_revolution: 32768
         min: -0.5
         max:  0.5
+        homing_direction: 1
+        homing_offset: 0.0
 
       - id: 8
         gear_ratio: 6.33
@@ -68,6 +82,8 @@ masters:
         pulse_per_revolution: 32768
         min: -0.5
         max:  0.5
+        homing_direction: 1
+        homing_offset: 0.0
 
   - id: 1
     period: 1000
@@ -82,6 +98,8 @@ masters:
         pulse_per_revolution: 65536
         min: -0.5
         max:  0.5
+        homing_direction: 1
+        homing_offset: 0.0
 
       - id: 10
         gear_ratio: 36.0
@@ -90,6 +108,8 @@ masters:
         pulse_per_revolution: 65536
         min: -0.5
         max:  0.5
+        homing_direction: 1
+        homing_offset: 0.0
 
       - id: 11
         gear_ratio: 36.0
@@ -98,6 +118,8 @@ masters:
         pulse_per_revolution: 65536
         min: -0.5
         max:  0.5
+        homing_direction: -1
+        homing_offset: 0.0
 
       - id: 12
         gear_ratio: 36.0
@@ -106,3 +128,5 @@ masters:
         pulse_per_revolution: 65536
         min: -0.5
         max:  0.5
+        homing_direction: -1
+        homing_offset: 0.0
