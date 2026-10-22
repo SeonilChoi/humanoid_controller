@@ -32,11 +32,11 @@ constexpr const char* kMotorNames[motor_interface::MAX_MOTORS] = {
     "right_ankle_roll",
 };
 
-void apply_gains(motor_interface::motor_command_t* command, int n_motors) {
+// motor.yaml kp / kd of each motor (driver units), the same motor_command_ gains ARTI-H1 walks with.
+void apply_gains(const motor_manager::MotorManager& motor_manager, motor_interface::motor_command_t* command, int n_motors) {
     for (int i = 0; i < n_motors; ++i) {
-        const bool ankle = i >= 8;
-        command[i].kp = ankle ? 10.0 : 0.5;
-        command[i].kd = ankle ? 5.0 : 0.1;
+        command[i].kp = motor_manager.gains(static_cast<uint8_t>(i)).kp;
+        command[i].kd = motor_manager.gains(static_cast<uint8_t>(i)).kd;
     }
 }
 }
@@ -138,13 +138,26 @@ int main(int argc, char* argv[])
     motor_manager.set_zero_offset();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-    apply_gains(command, n_motors);
+    apply_gains(motor_manager, command, n_motors);
 
     for (int i = 0; i < n_motors; ++i) {
         command[i].position = 0.0;
     }
     motor_manager.write(command);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(8000));
+
+    // The log starts at the policy default pose, not at 0: move there over 2 s instead of jumping.
+    if (!positions.empty()) {
+        const int ramp_steps = std::max(1, static_cast<int>(2.0 / dt));
+        for (int s = 1; s <= ramp_steps && running; ++s) {
+            const double alpha = static_cast<double>(s) / static_cast<double>(ramp_steps);
+            for (int i = 0; i < n_motors; ++i) {
+                command[i].position = positions.front()[static_cast<std::size_t>(i)] * alpha;
+            }
+            motor_manager.write(command);
+            std::this_thread::sleep_for(period);
+        }
+    }
 
     std::size_t step = 0;
     auto next_wakeup = std::chrono::steady_clock::now();

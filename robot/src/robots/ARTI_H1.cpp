@@ -1,9 +1,13 @@
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
 #include <thread>
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
+
+#include <yaml-cpp/yaml.h>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -20,7 +24,10 @@
 namespace {
 
 constexpr std::size_t NUM_JOINTS = 12;
-constexpr std::size_t OBSERVATION_SIZE = 102;
+// root tan-norm 6, angular velocity 3, joint tan-norm 72, joint velocity 12, toes 6, previous actions 12,
+// gait phase sin/cos 2, commands 3 (ArtiH1AmpEnv._get_observations).
+constexpr std::size_t OBSERVATION_SIZE = 116;
+constexpr auto STAND_UP_TIME = std::chrono::seconds(3);
 constexpr double PI = 3.14159265358979323846;
 
 constexpr auto HOMING_PERIOD = std::chrono::milliseconds(10);
@@ -51,6 +58,17 @@ void append_vector(const Eigen::Vector3d& value, std::vector<double>& vector) {
     vector.push_back(value.x());
     vector.push_back(value.y());
     vector.push_back(value.z());
+}
+
+template <std::size_t M>
+std::array<double, M> read_array(const YAML::Node& node, const char* key) {
+    const auto values = node[key].as<std::vector<double>>();
+    if (values.size() != M) {
+        throw std::runtime_error(std::string("[ArtiH1] robot.yaml policy.") + key + " needs " + std::to_string(M) + " values.");
+    }
+    std::array<double, M> out{};
+    std::copy(values.begin(), values.end(), out.begin());
+    return out;
 }
 
 void append_rotation(const Eigen::Matrix3d& value, std::vector<double>& vector) {
@@ -87,8 +105,23 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
         foot_toe_offsets_.push_back(Eigen::Vector3d(foot.offset.data()));
     }
 
-    controller_ = std::make_unique<controller::AmpController>(model_file_);
+    auto amp_controller = std::make_unique<controller::AmpController>(model_file_);
+    amp_controller_ = amp_controller.get();
+    controller_ = std::move(amp_controller);
     controller_->initialize();
+
+    const YAML::Node policy = YAML::LoadFile(config_file)["policy"];
+    if (!policy) throw std::runtime_error("[ArtiH1::ArtiH1] robot.yaml has no 'policy' section.");
+    default_pose_ = read_array<NUM_JOINTS>(policy, "default_pose");
+    // Walking PD gains: motor.yaml 'kp' / 'kd' per motor (driver units, the real robot gains).
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        policy_kp_[i] = motor_manager_->gains(static_cast<uint8_t>(i)).kp;
+        policy_kd_[i] = motor_manager_->gains(static_cast<uint8_t>(i)).kd;
+    }
+    command_scale_ = read_array<3>(policy, "command_scale");
+    command_max_ = read_array<3>(policy, "command_max");
+    gait_phase_rate_ = policy["gait_phase_rate"].as<double>();
+    control_dt_ = policy["control_dt"].as<double>();
 
     observation_.clear();
     action_.clear();
@@ -114,7 +147,35 @@ void robot::ArtiH1::initialize() {
         home(motor.index);
     }
 
-    // homed motors keep holding 0.0 with weak gains (homing_hold_kp / homing_hold_kd)
+    // homed motors hold 0.0 with weak gains (homing_hold_kp / homing_hold_kd); now move to the policy's default
+    // pose with the policy gains, so the first q_des does not jump.
+    motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
+    motor_manager_->read(motor_status);
+    std::array<double, NUM_JOINTS> start{};
+    std::array<double, NUM_JOINTS> goal{};
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
+        start[motor_index] = motor_status[motor_index].position;
+        goal[motor_index] = default_pose_[i];
+    }
+    const auto begin = std::chrono::steady_clock::now();
+    const double duration = std::chrono::duration<double>(STAND_UP_TIME).count();
+    auto next_wakeup = begin;
+    while (true) {
+        const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
+        const double alpha = std::min(1.0, t / duration);
+        for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+            motor_command_[i].position = start[i] + (goal[i] - start[i]) * alpha;
+            motor_command_[i].kp = policy_kp_[i];
+            motor_command_[i].kd = policy_kd_[i];
+        }
+        motor_manager_->write(motor_command_);
+        if (alpha >= 1.0) break;
+        next_wakeup += HOMING_PERIOD;
+        std::this_thread::sleep_until(next_wakeup);
+    }
+    gait_phase_ = 0.0;
+    previous_actions_.fill(0.0);
 }
 
 void robot::ArtiH1::home(uint8_t index) {
@@ -341,24 +402,46 @@ void robot::ArtiH1::observation() {
         append_vector(heading_R_root * toe_position, observation_);
     }
 
+    // previous actions [99:111], policy order (raw ONNX "actions", already clamped to [-1, 1])
+    for (const double action : previous_actions_) {
+        observation_.push_back(action);
+    }
+
+    // gait clock [111:113]
+    observation_.push_back(std::sin(2.0 * PI * gait_phase_));
+    observation_.push_back(std::cos(2.0 * PI * gait_phase_));
+
     // read joy data
     joy_interface::joy_data_t joy_data{};
     joy_handler_->read(joy_data);
 
-    // command [99:102]
-    observation_.push_back(joy_data.stick_ly * 0.05);
-    observation_.push_back(-joy_data.stick_lx * 0.05);
-    observation_.push_back(-joy_data.stick_rx * 0.025);
+    // command [113:116] = command * command_scale, full stick = the training command range
+    observation_.push_back(joy_data.stick_ly * command_max_[0] * command_scale_[0]);
+    observation_.push_back(-joy_data.stick_lx * command_max_[1] * command_scale_[1]);
+    observation_.push_back(-joy_data.stick_rx * command_max_[2] * command_scale_[2]);
 }
 
 void robot::ArtiH1::control() {
     if (!observation_.empty()) {
+        // action_ = q_des (rad, policy order): default pose + scaled action + nominal gait at the next clock
+        // phase, clamped to the training joint limits (hip_roll +-15 deg).
         controller_->update(observation_, action_);
         for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
             const auto joint_id = kinematics_->joint_id(kPolicyJointNames[i]);
             const auto motor_index = joint_id_to_motor_index_.at(joint_id);
             motor_command_[motor_index].position = action_[i];
+            motor_command_[motor_index].kp = policy_kp_[motor_index];
+            motor_command_[motor_index].kd = policy_kd_[motor_index];
         }
+
+        const auto& actions = amp_controller_->policy_actions();
+        if (actions.size() != NUM_JOINTS) {
+            throw std::runtime_error("[ArtiH1::control] The ONNX model has no 'actions' output (needs pt_to_onnx.py export).");
+        }
+        std::copy(actions.begin(), actions.end(), previous_actions_.begin());
+
+        // the env advances the clock once per control step (ArtiH1AmpEnv._pre_physics_step)
+        gait_phase_ = std::fmod(gait_phase_ + control_dt_ * gait_phase_rate_, 1.0);
     }
     motor_manager_->write(motor_command_);
 }

@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "robot/core/robot.hpp"
+#include "robot/controllers/amp_controller.hpp"
 
 namespace robot {
 
@@ -40,6 +41,27 @@ private:
     std::vector<pinocchio::FrameIndex> foot_frame_ids_;
 
     std::vector<Eigen::Vector3d> foot_toe_offsets_;
+
+    // Policy settings from robot.yaml 'policy' (must match the training env, see arti_h1_env_cfg.py).
+    controller::AmpController* amp_controller_{nullptr};
+
+    std::array<double, 12> default_pose_{};   // first reference frame, policy order
+
+    std::array<double, 12> policy_kp_{};      // motor.yaml kp / kd, driver units, motor index order
+
+    std::array<double, 12> policy_kd_{};
+
+    std::array<double, 3> command_scale_{};   // observation = command * command_scale
+
+    std::array<double, 3> command_max_{};     // command at full stick: vx (m/s), vy (m/s), yaw rate (rad/s)
+
+    double gait_phase_rate_{0.0};             // gait clock, cycles per second
+
+    double control_dt_{1.0 / 60.0};
+
+    double gait_phase_{0.0};                  // 0 = left single support start, as in the reference clips
+
+    std::array<double, 12> previous_actions_{};
 };
 
 } // namespace robot

@@ -38,6 +38,8 @@ public:
 
     const motor_interface::motor_homing_t& homing(uint8_t index) const { return homing_[index]; }
 
+    const motor_interface::motor_gains_t& gains(uint8_t index) const { return gains_[index]; }
+
 private:
     void load(const std::string& config_file);
 
@@ -54,6 +56,8 @@ private:
     motor_interface::motor_state_t status_[motor_interface::MAX_MOTORS]{};
 
     motor_interface::motor_homing_t homing_[motor_interface::MAX_MOTORS]{};
+
+    motor_interface::motor_gains_t gains_[motor_interface::MAX_MOTORS]{};
 
     uint8_t master_ids_[motor_interface::MAX_MOTORS]{};
 

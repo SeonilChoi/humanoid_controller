@@ -18,3 +18,5 @@ target_link_libraries(example_xsens PRIVATE sensor)
 
 add_executable(example_dualsense src/hardware/joy/example_dualsense.cpp)
 target_link_libraries(example_dualsense PRIVATE joy)
+add_executable(example_sysid src/hardware/motor/example_sysid.cpp)
+target_link_libraries(example_sysid PRIVATE motor yaml-cpp)

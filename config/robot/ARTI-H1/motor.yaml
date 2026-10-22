@@ -1,3 +1,7 @@
+# kp / kd: PD gains every program sends as motor_command_ kp / kd while it controls the motor (homing uses the
+# homing_* gains). DRIVER units: Unitree = rotor side (joint side x gear_ratio^2 = x 40.07), CubeMars MIT = output side.
+# min / max: joint limits after homing (rad). The homing side equals homing_offset (the stopper), so no command
+# ever pushes past the stopper; the other side is the free end of the joint.
 masters:
   - id: 0
     period: 8000 # microseconds
@@ -7,12 +11,14 @@ masters:
     motors:
       - id: 1
         gear_ratio: 6.33
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 0.1
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.5
-        max:  0.55
+        min: -0.7056
+        max:  0.7056
         homing_direction: 1
-        homing_offset: 0.5
+        homing_offset: 0.7056
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.05
@@ -25,12 +31,14 @@ masters:
 
       - id: 2
         gear_ratio: 6.33
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 0.1
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.5
-        max:  0.55
+        min: -0.7056
+        max:  0.7056
         homing_direction: 1
-        homing_offset: 0.5
+        homing_offset: 0.7056
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.05
@@ -43,12 +51,14 @@ masters:
 
       - id: 3
         gear_ratio: 6.33
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 0.1
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.5
-        max:  0.5
+        min: -0.2854
+        max:  0.4
         homing_direction: -1
-        homing_offset: -0.3
+        homing_offset: -0.2854
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.05
@@ -61,12 +71,14 @@ masters:
 
       - id: 4
         gear_ratio: 6.33
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 0.1
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.5
-        max:  0.5
+        min: -0.2854
+        max:  0.4
         homing_direction: -1
-        homing_offset: -0.3
+        homing_offset: -0.2854
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.05
@@ -79,12 +91,14 @@ masters:
 
       - id: 5
         gear_ratio: 6.33
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 0.1
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.83
+        min: -0.7404
         max:  0.5
         homing_direction: -1
-        homing_offset: -0.78
+        homing_offset: -0.7404
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.05
@@ -97,12 +111,14 @@ masters:
 
       - id: 6
         gear_ratio: 6.33
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 0.1
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.83
+        min: -0.7404
         max:  0.5
         homing_direction: -1
-        homing_offset: -0.78
+        homing_offset: -0.7404
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.05
@@ -115,12 +131,14 @@ masters:
 
       - id: 7
         gear_ratio: 6.33
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 0.1
         axis: 1
         pulse_per_revolution: 32768
         min: -0.5
-        max:  1.62
+        max:  1.5258
         homing_direction: 1
-        homing_offset: 1.57
+        homing_offset: 1.5258
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.05
@@ -133,12 +151,14 @@ masters:
 
       - id: 8
         gear_ratio: 6.33
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 0.1
         axis: 1
         pulse_per_revolution: 32768
         min: -0.5
-        max:  1.62
+        max:  1.5258
         homing_direction: 1
-        homing_offset: 1.57
+        homing_offset: 1.5258
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.05
@@ -157,12 +177,14 @@ masters:
     motors:
       - id: 9
         gear_ratio: 36.0
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 3.0
         axis: -1
         pulse_per_revolution: 65536
         min: -0.5
-        max:  0.83
+        max:  0.7453
         homing_direction: 1
-        homing_offset: 0.78
+        homing_offset: 0.7453
         homing_velocity: 0.3
         homing_kp: 10.0
         homing_kd: 0.5
@@ -175,12 +197,14 @@ masters:
 
       - id: 10
         gear_ratio: 36.0
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 3.0
         axis: -1
         pulse_per_revolution: 65536
         min: -0.5
-        max:  0.83
+        max:  0.7453
         homing_direction: 1
-        homing_offset: 0.78
+        homing_offset: 0.7453
         homing_velocity: 0.3
         homing_kp: 10.0
         homing_kd: 0.5
@@ -193,12 +217,14 @@ masters:
 
       - id: 11
         gear_ratio: 36.0
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 3.0
         axis: -1
         pulse_per_revolution: 65536
-        min: -1.62
+        min: -1.5216
         max:  0.5
         homing_direction: -1
-        homing_offset: -1.57
+        homing_offset: -1.5216
         homing_velocity: 0.3
         homing_kp: 10.0
         homing_kd: 0.5
@@ -211,12 +237,14 @@ masters:
 
       - id: 12
         gear_ratio: 36.0
+        kp: 10.0    # motor_command_ gain while controlling (driver units)
+        kd: 3.0
         axis: -1
         pulse_per_revolution: 65536
-        min: -1.62
+        min: -1.5216
         max:  0.5
         homing_direction: -1
-        homing_offset: -1.57
+        homing_offset: -1.5216
         homing_velocity: 0.3
         homing_kp: 10.0
         homing_kd: 0.5

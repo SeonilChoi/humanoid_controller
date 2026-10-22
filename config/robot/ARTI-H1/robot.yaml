@@ -36,11 +36,28 @@ sensors:
   - name: imu_body
     index: 0
     frame: pelvis
-    translation: [-0.04688, 0.0, 0.31825]
+    # MTi-3 in the pelvis frame (arti_h1_env_cfg.py ARTI_H1_IMU_OFFSET_FROM_PELVIS = trunk 0.28725 + 0.023, x +0.04688).
+    translation: [0.04688, 0.0, 0.31025]
     orientation: [0.0, 0.0, 0.0, 1.0]
 
+# Sole centre in each foot link (ARTI_H1_*_FOOT_OFFSET_FROM_FOOT_LINK; the right leg is the left one rotated by pi).
 foots:
   - name: left_foot_link
-    offset: [0.026, 0.0, -0.051]
+    offset: [-0.026, 0.0, -0.051]
   - name: right_foot_link
-    offset: [0.026, 0.0, -0.051]
+    offset: [-0.026, 0.0, -0.051]
+
+# Policy settings; must match the training env (arti_h1 run28, zmp02 reference, hip_roll limit +-15 deg).
+# WARNING: agent.onnx (run28) was trained with joint-side gains 40 / 1.5 (hips, knees) and 30 / 0.8 (ankles), not with
+# the real gains below. Do not walk with it: retrain after the sysid fit (config/sysid) has matched the simulator.
+policy:
+  # Gait clock (cycles/s) advanced once per control step; the ONNX q_des already reads the nominal gait one step ahead.
+  gait_phase_rate: 1.12045
+  control_dt: 0.0166666667
+  # observation command = command * command_scale (command_linear/angular_velocity_scale).
+  command_scale: [0.5, 0.5, 0.25]
+  # Command at full stick: the training command range (vx m/s, vy m/s, yaw rate rad/s).
+  command_max: [0.079, 0.028, 0.079]
+  # First reference frame (policy / Isaac joint order); the robot moves here after homing before the policy starts.
+  default_pose: [0.0, 0.0, 0.0, 0.0, -0.10078, -0.10078, 0.20157, 0.20157, 0.10078, 0.10079, 0.0, 0.0]
+  # PD gains while walking: motor.yaml 'kp' / 'kd' of each motor (motor_command_ values, driver units).

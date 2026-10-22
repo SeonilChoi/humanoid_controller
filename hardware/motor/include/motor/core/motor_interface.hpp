@@ -23,6 +23,13 @@ struct motor_state_t {
     uint8_t error{};
 };
 
+// PD gains a program sends as motor_command_t kp / kd while it controls the motor (motor.yaml 'kp' / 'kd'),
+// in DRIVER units: Unitree rotor side, CubeMars MIT output side.
+struct motor_gains_t {
+    double kp{};
+    double kd{};
+};
+
 struct motor_homing_t {
     int8_t direction{};
     double offset{};

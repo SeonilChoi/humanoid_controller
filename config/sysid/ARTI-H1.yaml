@@ -1,0 +1,142 @@
+# System identification tests for ARTI-H1 (examples/src/hardware/motor/example_sysid.cpp).
+#
+#   ./example_sysid ../config/robot/ARTI-H1/motor.yaml ../config/sysid/ARTI-H1.yaml ./sysid_logs
+#
+# HANG THE ROBOT so both feet are off the ground and nothing can hit the legs. Run one leg / one test at a
+# time the first time (comment the others out) and keep a hand on the power switch.
+#
+# Units: every angle is the JOINT angle in rad, after homing (0 = URDF zero), Isaac joint order:
+#   index 0 left_hip_yaw, 1 right_hip_yaw, 2 left_hip_roll, 3 right_hip_roll, 4 left_hip_pitch,
+#   5 right_hip_pitch, 6 left_knee, 7 right_knee, 8 left_ankle_pitch, 9 right_ankle_pitch,
+#   10 left_ankle_roll, 11 right_ankle_roll  (= motor id - 1 in motor.yaml)
+# PD gains: the motor.yaml 'kp' / 'kd' of each motor, sent unchanged as motor_command_ kp / kd (driver units; Unitree
+# rotor side, CubeMars output side) - the same gains ARTI-H1 walks with. The CSV header also logs the joint-side values
+# (Unitree x gear_ratio^2 = x 40.07) that the simulator uses.
+
+# homing: same procedure as robot::ArtiH1::initialize (motor.yaml homing_* parameters).
+# current: the pose at start-up becomes 0 (only if the legs were put exactly in the URDF zero pose by hand).
+zero_mode: homing
+
+# Control / log period of the test loop (the Unitree bus itself updates every 8 ms, CubeMars every 1 ms).
+loop_period_us: 1000
+
+# Pose every joint holds while another one is tested: the walking default pose (first reference frame).
+hold_pose: [0.0, 0.0, 0.0, 0.0, -0.10078, -0.10078, 0.20157, 0.20157, 0.10078, 0.10079, 0.0, 0.0]
+# Speed (rad/s) for every slow move between test poses.
+move_speed: 0.2
+
+# Hard safety box per joint (rad). The example additionally keeps 0.05 rad inside motor.yaml min/max.
+# These are the policy's own joint ranges (run28, zmp02 reference) plus ~0.05 rad; hip_roll stays inside +-15 deg.
+safe_min: [-0.10, -0.10, -0.26, -0.26, -0.40, -0.40, -0.42, -0.42, -0.42, -0.42, -0.26, -0.26]
+safe_max: [ 0.10,  0.10,  0.26,  0.26,  0.45,  0.45,  0.32,  0.32,  0.42,  0.42,  0.26,  0.26]
+
+# Abort (all joints go to pure damping) if any of these trips.
+abort:
+  tracking_error: 0.30   # |command - position| rad
+  torque: 18.0           # |torque| Nm (sim limit 23.7 / 24)
+  temperature: 70.0      # deg C
+  damping_kd: 1.0        # joint-side kd used while aborting
+
+# Expected motion for +0.1 rad from the default pose, from the URDF (right leg = left leg rotated 180 deg about z,
+# so its pitch / roll signs are mirrored in the robot frame). The 'check' test prints these; confirm by eye.
+expect_positive:
+  left_hip_yaw:      "left foot toes turn to the RIGHT (yaw clockwise seen from above)"
+  right_hip_yaw:     "right foot toes turn to the RIGHT (yaw clockwise seen from above)"
+  left_hip_roll:     "left foot swings INWARD (toward the right leg), 22 mm"
+  right_hip_roll:    "right foot swings INWARD (toward the left leg), 22 mm"
+  left_hip_pitch:    "left foot swings FORWARD, 22 mm"
+  right_hip_pitch:   "right foot swings BACKWARD, 22 mm"
+  left_knee:         "left foot moves FORWARD 17 mm and down 4 mm"
+  right_knee:        "right foot moves BACKWARD 17 mm and down 4 mm"
+  left_ankle_pitch:  "left toes go DOWN (sole tilts toes-down 5.7 deg), foot moves back 11 mm"
+  right_ankle_pitch: "right toes go UP (sole tilts toes-up 5.7 deg), foot moves forward 11 mm"
+  left_ankle_roll:   "left sole tilts so its OUTER (left) edge goes UP"
+  right_ankle_roll:  "right sole tilts so its OUTER (right) edge goes UP"
+
+# Tests run in this order. Each test writes <output_dir>/<NN>_<type>_<joint>.csv.
+#   check:  0 -> +amplitude -> -amplitude -> 0 at 'speed' around the hold pose (sign / range / zero check).
+#   step:   hold pose +amplitude, back, -amplitude, back; each held 'hold' s; 'repeat' times (latency, PD response).
+#   chirp:  sinusoid of 'amplitude' around the hold pose, frequency f0 -> f1 (log sweep) over 'duration' s
+#           (rotor inertia / armature, viscous damping, delay).
+#   sweep:  triangle wave +-amplitude at each of 'speeds' rad/s, 'cycles' per speed (Coulomb + viscous friction).
+#   replay: plays joint_targets of a replay_demo log on ALL joints at its dt (sim-to-real comparison).
+tests:
+  # Uncomment what you want to run; tests run top to bottom. Recommended order:
+  #   1) 'check' of every joint (sign / zero), 2) step + chirp + sweep per joint (step AND sweep are both needed:
+  #   viscous friction only shows in the sweeps), 3) the whole-leg replay at the bottom.
+  # Each joint takes ~1 min (check 4-7 s, step 13 s, chirp 20 s, sweep ~20-30 s).
+
+  # ---- left_hip_yaw ----
+  # - {type: check, joint: left_hip_yaw, amplitude: 0.05, speed: 0.05}
+  # - {type: step,  joint: left_hip_yaw, amplitude: 0.03, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: left_hip_yaw, amplitude: 0.02, f0: 0.3, f1: 6.0, duration: 20.0}
+  # - {type: sweep, joint: left_hip_yaw, amplitude: 0.06, speeds: [0.1, 0.2, 0.5, 1.0], cycles: 3}
+
+  # ---- left_hip_roll ----
+  # - {type: check, joint: left_hip_roll, amplitude: 0.08, speed: 0.10}
+  # - {type: step,  joint: left_hip_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: left_hip_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: left_hip_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+
+  # ---- left_hip_pitch ----
+  - {type: check, joint: left_hip_pitch, amplitude: 0.10, speed: 0.10}
+  - {type: step,  joint: left_hip_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
+  - {type: chirp, joint: left_hip_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  - {type: sweep, joint: left_hip_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+
+  # ---- left_knee ----
+  # - {type: check, joint: left_knee, amplitude: 0.08, speed: 0.10}
+  # - {type: step,  joint: left_knee, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: left_knee, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: left_knee, amplitude: 0.10, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+
+  # ---- left_ankle_pitch ----
+  # - {type: check, joint: left_ankle_pitch, amplitude: 0.10, speed: 0.10}
+  # - {type: step,  joint: left_ankle_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: left_ankle_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: left_ankle_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
+
+  # ---- left_ankle_roll ----
+  # - {type: check, joint: left_ankle_roll, amplitude: 0.08, speed: 0.10}
+  # - {type: step,  joint: left_ankle_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: left_ankle_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: left_ankle_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
+
+  # ---- right_hip_yaw ----
+  # - {type: check, joint: right_hip_yaw, amplitude: 0.05, speed: 0.05}
+  # - {type: step,  joint: right_hip_yaw, amplitude: 0.03, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: right_hip_yaw, amplitude: 0.02, f0: 0.3, f1: 6.0, duration: 20.0}
+  # - {type: sweep, joint: right_hip_yaw, amplitude: 0.06, speeds: [0.1, 0.2, 0.5, 1.0], cycles: 3}
+
+  # ---- right_hip_roll ----
+  # - {type: check, joint: right_hip_roll, amplitude: 0.08, speed: 0.10}
+  # - {type: step,  joint: right_hip_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: right_hip_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: right_hip_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+
+  # ---- right_hip_pitch ----
+  # - {type: check, joint: right_hip_pitch, amplitude: 0.10, speed: 0.10}
+  # - {type: step,  joint: right_hip_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: right_hip_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: right_hip_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+
+  # ---- right_knee ----
+  # - {type: check, joint: right_knee, amplitude: 0.08, speed: 0.10}
+  # - {type: step,  joint: right_knee, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: right_knee, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: right_knee, amplitude: 0.10, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+
+  # ---- right_ankle_pitch ----
+  # - {type: check, joint: right_ankle_pitch, amplitude: 0.10, speed: 0.10}
+  # - {type: step,  joint: right_ankle_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: right_ankle_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: right_ankle_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
+
+  # ---- right_ankle_roll ----
+  # - {type: check, joint: right_ankle_roll, amplitude: 0.08, speed: 0.10}
+  # - {type: step,  joint: right_ankle_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
+  # - {type: chirp, joint: right_ankle_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  # - {type: sweep, joint: right_ankle_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
+
+  # ---- whole legs: open-loop replay of the reference walk (only after every joint passed 'check') ----
+  # - {type: replay, file: ../config/292.yaml}

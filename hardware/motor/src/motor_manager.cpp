@@ -139,6 +139,13 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
             homing.torque_threshold = motor["homing_torque_threshold"].as<double>();
             homing.velocity_threshold = motor["homing_velocity_threshold"].as<double>();
 
+            if (!motor["kp"] || !motor["kd"]) {
+                throw std::runtime_error("[MotorManager::load] Motor " + std::to_string(motor_id_int) + " needs 'kp' and 'kd'.");
+            }
+            motor_interface::motor_gains_t& gains = gains_[motor_id - 1];
+            gains.kp = motor["kp"].as<double>();
+            gains.kd = motor["kd"].as<double>();
+
             master_ids_[motor_id - 1] = master_id;
 
             number_of_motors_++;

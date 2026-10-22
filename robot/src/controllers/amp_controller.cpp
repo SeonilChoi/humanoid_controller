@@ -28,7 +28,8 @@ struct controller::AmpController::Impl {
     };
     
     std::string input_name;
-    std::string output_name;
+    std::string output_name;       // joint position targets
+    std::string actions_name;      // raw actions, empty if the model has a single output
     std::vector<int64_t> input_shape;
     std::vector<int64_t> output_shape;
     std::vector<float> input;
@@ -62,13 +63,27 @@ void controller::AmpController::initialize() {
     Ort::AllocatorWithDefaultOptions allocator;
 
     const auto input_name = impl_->session->GetInputNameAllocated(0, allocator);
-    const auto output_name = impl_->session->GetOutputNameAllocated(0, allocator);
     impl_->input_name = input_name.get();
+
+    // arti_h1 scripts/pt_to_onnx.py exports ("actions", "q_des"): send q_des to the motors, feed actions back.
+    std::size_t output_index = 0;
+    const std::size_t n_outputs = impl_->session->GetOutputCount();
+    for (std::size_t i = 0; i < n_outputs; ++i) {
+        const auto name = impl_->session->GetOutputNameAllocated(i, allocator);
+        const std::string value = name.get();
+        if (value == "q_des") {
+            output_index = i;
+        } else if (value == "actions") {
+            impl_->actions_name = value;
+        }
+    }
+    const auto output_name = impl_->session->GetOutputNameAllocated(output_index, allocator);
     impl_->output_name = output_name.get();
+    if (impl_->actions_name == impl_->output_name) impl_->actions_name.clear();
 
     impl_->input_shape = impl_->session->GetInputTypeInfo(0)
         .GetTensorTypeAndShapeInfo().GetShape();
-    impl_->output_shape = impl_->session->GetOutputTypeInfo(0)
+    impl_->output_shape = impl_->session->GetOutputTypeInfo(output_index)
         .GetTensorTypeAndShapeInfo().GetShape();
     
     impl_->input.assign(shape_size(impl_->input_shape), 0.0f);
@@ -104,7 +119,8 @@ void controller::AmpController::update(const std::vector<double>& observation, s
     );
 
     const char* input_names[] = { impl_->input_name.c_str() };
-    const char* output_names[] = { impl_->output_name.c_str() };
+    const char* output_names[] = { impl_->output_name.c_str(), impl_->actions_name.c_str() };
+    const std::size_t n_outputs = impl_->actions_name.empty() ? 1 : 2;
 
     auto output_tensors = impl_->session->Run(
         Ort::RunOptions{nullptr},
@@ -112,12 +128,21 @@ void controller::AmpController::update(const std::vector<double>& observation, s
         &input_tensor,
         1,
         output_names,
-        1
+        n_outputs
     );
 
     const float* out = output_tensors[0].GetTensorData<float>();
     action.resize(impl_->output.size());
     for (std::size_t i = 0; i < action.size(); ++i) {
         action[i] = static_cast<double>(out[i]);
+    }
+
+    policy_actions_.clear();
+    if (n_outputs == 2) {
+        const float* raw = output_tensors[1].GetTensorData<float>();
+        policy_actions_.resize(impl_->output.size());
+        for (std::size_t i = 0; i < policy_actions_.size(); ++i) {
+            policy_actions_[i] = static_cast<double>(raw[i]);
+        }
     }
 }
