@@ -134,6 +134,8 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
             homing.kd = motor["homing_kd"].as<double>();
             homing.zero_kp = motor["homing_zero_kp"].as<double>();
             homing.zero_kd = motor["homing_zero_kd"].as<double>();
+            homing.hold_kp = motor["homing_hold_kp"].as<double>();
+            homing.hold_kd = motor["homing_hold_kd"].as<double>();
             homing.torque_threshold = motor["homing_torque_threshold"].as<double>();
             homing.velocity_threshold = motor["homing_velocity_threshold"].as<double>();
 

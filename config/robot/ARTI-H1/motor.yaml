@@ -10,7 +10,7 @@ masters:
         axis: 1
         pulse_per_revolution: 32768
         min: -0.5
-        max:  0.5
+        max:  0.55
         homing_direction: 1
         homing_offset: 0.5
         homing_velocity: 0.3
@@ -18,6 +18,8 @@ masters:
         homing_kd: 0.05
         homing_zero_kp: 2.0
         homing_zero_kd: 0.1
+        homing_hold_kp: 0.5
+        homing_hold_kd: 0.05
         homing_torque_threshold: 1.0
         homing_velocity_threshold: 0.1
 
@@ -26,7 +28,7 @@ masters:
         axis: 1
         pulse_per_revolution: 32768
         min: -0.5
-        max:  0.5
+        max:  0.55
         homing_direction: 1
         homing_offset: 0.5
         homing_velocity: 0.3
@@ -34,6 +36,8 @@ masters:
         homing_kd: 0.05
         homing_zero_kp: 2.0
         homing_zero_kd: 0.1
+        homing_hold_kp: 0.5
+        homing_hold_kd: 0.05
         homing_torque_threshold: 1.0
         homing_velocity_threshold: 0.1
 
@@ -50,6 +54,8 @@ masters:
         homing_kd: 0.05
         homing_zero_kp: 2.0
         homing_zero_kd: 0.1
+        homing_hold_kp: 0.5
+        homing_hold_kd: 0.05
         homing_torque_threshold: 1.0
         homing_velocity_threshold: 0.1
 
@@ -66,6 +72,8 @@ masters:
         homing_kd: 0.05
         homing_zero_kp: 2.0
         homing_zero_kd: 0.1
+        homing_hold_kp: 0.5
+        homing_hold_kd: 0.05
         homing_torque_threshold: 1.0
         homing_velocity_threshold: 0.1
 
@@ -73,7 +81,7 @@ masters:
         gear_ratio: 6.33
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.5
+        min: -0.83
         max:  0.5
         homing_direction: -1
         homing_offset: -0.78
@@ -82,6 +90,8 @@ masters:
         homing_kd: 0.05
         homing_zero_kp: 2.0
         homing_zero_kd: 0.1
+        homing_hold_kp: 0.5
+        homing_hold_kd: 0.05
         homing_torque_threshold: 1.0
         homing_velocity_threshold: 0.1
 
@@ -89,7 +99,7 @@ masters:
         gear_ratio: 6.33
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.5
+        min: -0.83
         max:  0.5
         homing_direction: -1
         homing_offset: -0.78
@@ -98,6 +108,8 @@ masters:
         homing_kd: 0.05
         homing_zero_kp: 2.0
         homing_zero_kd: 0.1
+        homing_hold_kp: 0.5
+        homing_hold_kd: 0.05
         homing_torque_threshold: 1.0
         homing_velocity_threshold: 0.1
 
@@ -106,7 +118,7 @@ masters:
         axis: 1
         pulse_per_revolution: 32768
         min: -0.5
-        max:  0.5
+        max:  1.62
         homing_direction: 1
         homing_offset: 1.57
         homing_velocity: 0.3
@@ -114,6 +126,8 @@ masters:
         homing_kd: 0.05
         homing_zero_kp: 2.0
         homing_zero_kd: 0.1
+        homing_hold_kp: 0.5
+        homing_hold_kd: 0.05
         homing_torque_threshold: 1.0
         homing_velocity_threshold: 0.1
 
@@ -122,7 +136,7 @@ masters:
         axis: 1
         pulse_per_revolution: 32768
         min: -0.5
-        max:  0.5
+        max:  1.62
         homing_direction: 1
         homing_offset: 1.57
         homing_velocity: 0.3
@@ -130,6 +144,8 @@ masters:
         homing_kd: 0.05
         homing_zero_kp: 2.0
         homing_zero_kd: 0.1
+        homing_hold_kp: 0.5
+        homing_hold_kd: 0.05
         homing_torque_threshold: 1.0
         homing_velocity_threshold: 0.1
 
@@ -144,7 +160,7 @@ masters:
         axis: -1
         pulse_per_revolution: 65536
         min: -0.5
-        max:  0.5
+        max:  0.83
         homing_direction: 1
         homing_offset: 0.78
         homing_velocity: 0.3
@@ -152,6 +168,8 @@ masters:
         homing_kd: 0.5
         homing_zero_kp: 30.0
         homing_zero_kd: 1.0
+        homing_hold_kp: 5.0
+        homing_hold_kd: 0.5
         homing_torque_threshold: 0.8
         homing_velocity_threshold: 0.1
 
@@ -160,7 +178,7 @@ masters:
         axis: -1
         pulse_per_revolution: 65536
         min: -0.5
-        max:  0.5
+        max:  0.83
         homing_direction: 1
         homing_offset: 0.78
         homing_velocity: 0.3
@@ -168,6 +186,8 @@ masters:
         homing_kd: 0.5
         homing_zero_kp: 30.0
         homing_zero_kd: 1.0
+        homing_hold_kp: 5.0
+        homing_hold_kd: 0.5
         homing_torque_threshold: 0.8
         homing_velocity_threshold: 0.1
 
@@ -175,7 +195,7 @@ masters:
         gear_ratio: 36.0
         axis: -1
         pulse_per_revolution: 65536
-        min: -0.5
+        min: -1.62
         max:  0.5
         homing_direction: -1
         homing_offset: -1.57
@@ -184,6 +204,8 @@ masters:
         homing_kd: 0.5
         homing_zero_kp: 30.0
         homing_zero_kd: 1.0
+        homing_hold_kp: 5.0
+        homing_hold_kd: 0.5
         homing_torque_threshold: 0.8
         homing_velocity_threshold: 0.1
 
@@ -191,7 +213,7 @@ masters:
         gear_ratio: 36.0
         axis: -1
         pulse_per_revolution: 65536
-        min: -0.5
+        min: -1.62
         max:  0.5
         homing_direction: -1
         homing_offset: -1.57
@@ -200,5 +222,7 @@ masters:
         homing_kd: 0.5
         homing_zero_kp: 30.0
         homing_zero_kd: 1.0
+        homing_hold_kp: 5.0
+        homing_hold_kd: 0.5
         homing_torque_threshold: 0.8
         homing_velocity_threshold: 0.1

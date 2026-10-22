@@ -31,6 +31,8 @@ struct motor_homing_t {
     double kd{};
     double zero_kp{};
     double zero_kd{};
+    double hold_kp{};
+    double hold_kd{};
     double torque_threshold{};
     double velocity_threshold{};
 };

@@ -114,7 +114,7 @@ void robot::ArtiH1::initialize() {
         home(motor.index);
     }
 
-    // homing offsets are not calibrated yet (0.0), so all motors stay passive (kp = kd = 0)
+    // homed motors keep holding 0.0 with weak gains (homing_hold_kp / homing_hold_kd)
 }
 
 void robot::ArtiH1::home(uint8_t index) {
@@ -124,7 +124,7 @@ void robot::ArtiH1::home(uint8_t index) {
     motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
     motor_manager_->read(motor_status);
 
-    // only the homing motor is driven, the others stay passive (kp = kd = 0)
+    // only the homing motor is driven, already homed motors hold 0.0, the rest stay passive
     double target = motor_status[index].position;
     motor_command_[index].position = target;
     motor_command_[index].kp = homing.kp;
@@ -185,7 +185,9 @@ void robot::ArtiH1::home(uint8_t index) {
         }
     }
 
+    // damping only while the offset changes: a position hold would jump when the position frame shifts
     motor_command_[index] = motor_interface::motor_command_t{};
+    motor_command_[index].kd = homing.hold_kd;
     motor_manager_->write(motor_command_);
 
     motor_manager_->set_homing_offset(index);
@@ -241,7 +243,10 @@ void robot::ArtiH1::home(uint8_t index) {
     std::cout << "[ArtiH1::home] Motor index " << static_cast<int>(index)
               << " moved to zero, position " << motor_status[index].position << std::endl;
 
-    motor_command_[index] = motor_interface::motor_command_t{};
+    // keep holding 0.0 with weak gains
+    motor_command_[index].position = 0.0;
+    motor_command_[index].kp = homing.hold_kp;
+    motor_command_[index].kd = homing.hold_kd;
     motor_manager_->write(motor_command_);
 }
 

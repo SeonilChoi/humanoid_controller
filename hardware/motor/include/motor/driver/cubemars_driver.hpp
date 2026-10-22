@@ -120,7 +120,7 @@ private:
         if (zero_offset_ == -10.0) {
             position = value * axis_;
         } else {
-            position = clamp(value * axis_, min_, max_) + zero_offset_ * axis_;
+            position = clamp(value, min_, max_) * axis_ + zero_offset_ * axis_;
         }
         return float_to_uint(position, POSITION_MIN, POSITION_MAX, 16);
     }

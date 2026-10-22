@@ -136,7 +136,7 @@ private:
         if (zero_offset_ == -10.0) {
             position = value * axis_ * gear_ratio_;
         } else {
-            position = (clamp(value * axis_, min_, max_) + zero_offset_) * gear_ratio_;
+            position = (clamp(value, min_, max_) * axis_ + zero_offset_) * gear_ratio_;
         }
         return static_cast<int32_t>(position / (PI * 2) * pulse_per_revolution_);
     }

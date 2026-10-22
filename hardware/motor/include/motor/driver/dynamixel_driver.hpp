@@ -84,7 +84,7 @@ private:
         if (zero_offset_ == -10.0) {
             motor = value * axis_ * gear_ratio_;
         } else {
-            motor = (clamp(value * axis_, min_, max_) + zero_offset_) * gear_ratio_;
+            motor = (clamp(value, min_, max_) * axis_ + zero_offset_) * gear_ratio_;
         }
         return static_cast<int32_t>(motor / (PI * 2.0) * pulse_per_revolution_);
     }
