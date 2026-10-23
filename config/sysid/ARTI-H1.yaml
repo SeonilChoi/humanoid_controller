@@ -67,76 +67,76 @@ tests:
   # Each joint takes ~1 min (check 4-7 s, step 13 s, chirp 20 s, sweep ~20-30 s).
 
   # ---- left_hip_yaw ----
-  # - {type: check, joint: left_hip_yaw, amplitude: 0.05, speed: 0.05}
-  # - {type: step,  joint: left_hip_yaw, amplitude: 0.03, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: left_hip_yaw, amplitude: 0.02, f0: 0.3, f1: 6.0, duration: 20.0}
-  # - {type: sweep, joint: left_hip_yaw, amplitude: 0.06, speeds: [0.1, 0.2, 0.5, 1.0], cycles: 3}
+  #- {type: check, joint: left_hip_yaw, amplitude: 0.05, speed: 0.05}
+  #- {type: step,  joint: left_hip_yaw, amplitude: 0.03, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: left_hip_yaw, amplitude: 0.02, f0: 0.3, f1: 6.0, duration: 20.0}
+  #- {type: sweep, joint: left_hip_yaw, amplitude: 0.06, speeds: [0.1, 0.2, 0.5, 1.0], cycles: 3}
 
   # ---- left_hip_roll ----
-  # - {type: check, joint: left_hip_roll, amplitude: 0.08, speed: 0.10}
-  # - {type: step,  joint: left_hip_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: left_hip_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: left_hip_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+  #- {type: check, joint: left_hip_roll, amplitude: 0.08, speed: 0.10}
+  #- {type: step,  joint: left_hip_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: left_hip_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: left_hip_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
 
   # ---- left_hip_pitch ----
-  - {type: check, joint: left_hip_pitch, amplitude: 0.10, speed: 0.10}
-  - {type: step,  joint: left_hip_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
-  - {type: chirp, joint: left_hip_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  - {type: sweep, joint: left_hip_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+  #- {type: check, joint: left_hip_pitch, amplitude: 0.10, speed: 0.10}
+  #- {type: step,  joint: left_hip_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: left_hip_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: left_hip_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
 
   # ---- left_knee ----
-  # - {type: check, joint: left_knee, amplitude: 0.08, speed: 0.10}
-  # - {type: step,  joint: left_knee, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: left_knee, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: left_knee, amplitude: 0.10, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+  #- {type: check, joint: left_knee, amplitude: 0.08, speed: 0.10}
+  #- {type: step,  joint: left_knee, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: left_knee, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: left_knee, amplitude: 0.10, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
 
   # ---- left_ankle_pitch ----
-  # - {type: check, joint: left_ankle_pitch, amplitude: 0.10, speed: 0.10}
-  # - {type: step,  joint: left_ankle_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: left_ankle_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: left_ankle_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
+  #- {type: check, joint: left_ankle_pitch, amplitude: 0.10, speed: 0.10}
+  #- {type: step,  joint: left_ankle_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: left_ankle_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: left_ankle_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
 
   # ---- left_ankle_roll ----
-  # - {type: check, joint: left_ankle_roll, amplitude: 0.08, speed: 0.10}
-  # - {type: step,  joint: left_ankle_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: left_ankle_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: left_ankle_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
+  #- {type: check, joint: left_ankle_roll, amplitude: 0.08, speed: 0.10}
+  #- {type: step,  joint: left_ankle_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: left_ankle_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: left_ankle_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
 
   # ---- right_hip_yaw ----
-  # - {type: check, joint: right_hip_yaw, amplitude: 0.05, speed: 0.05}
-  # - {type: step,  joint: right_hip_yaw, amplitude: 0.03, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: right_hip_yaw, amplitude: 0.02, f0: 0.3, f1: 6.0, duration: 20.0}
-  # - {type: sweep, joint: right_hip_yaw, amplitude: 0.06, speeds: [0.1, 0.2, 0.5, 1.0], cycles: 3}
+  #- {type: check, joint: right_hip_yaw, amplitude: 0.05, speed: 0.05}
+  #- {type: step,  joint: right_hip_yaw, amplitude: 0.03, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: right_hip_yaw, amplitude: 0.02, f0: 0.3, f1: 6.0, duration: 20.0}
+  #- {type: sweep, joint: right_hip_yaw, amplitude: 0.06, speeds: [0.1, 0.2, 0.5, 1.0], cycles: 3}
 
   # ---- right_hip_roll ----
-  # - {type: check, joint: right_hip_roll, amplitude: 0.08, speed: 0.10}
-  # - {type: step,  joint: right_hip_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: right_hip_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: right_hip_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+  #- {type: check, joint: right_hip_roll, amplitude: 0.08, speed: 0.10}
+  #- {type: step,  joint: right_hip_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: right_hip_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: right_hip_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
 
   # ---- right_hip_pitch ----
-  # - {type: check, joint: right_hip_pitch, amplitude: 0.10, speed: 0.10}
-  # - {type: step,  joint: right_hip_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: right_hip_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: right_hip_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+  #- {type: check, joint: right_hip_pitch, amplitude: 0.10, speed: 0.10}
+  #- {type: step,  joint: right_hip_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: right_hip_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: right_hip_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
 
   # ---- right_knee ----
-  # - {type: check, joint: right_knee, amplitude: 0.08, speed: 0.10}
-  # - {type: step,  joint: right_knee, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: right_knee, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: right_knee, amplitude: 0.10, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
+  #- {type: check, joint: right_knee, amplitude: 0.08, speed: 0.10}
+  #- {type: step,  joint: right_knee, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: right_knee, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: right_knee, amplitude: 0.10, speeds: [0.2, 0.5, 1.0, 2.0], cycles: 3}
 
   # ---- right_ankle_pitch ----
-  # - {type: check, joint: right_ankle_pitch, amplitude: 0.10, speed: 0.10}
-  # - {type: step,  joint: right_ankle_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: right_ankle_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: right_ankle_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
+  #- {type: check, joint: right_ankle_pitch, amplitude: 0.10, speed: 0.10}
+  #- {type: step,  joint: right_ankle_pitch, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: right_ankle_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: right_ankle_pitch, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
 
   # ---- right_ankle_roll ----
-  # - {type: check, joint: right_ankle_roll, amplitude: 0.08, speed: 0.10}
-  # - {type: step,  joint: right_ankle_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
-  # - {type: chirp, joint: right_ankle_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
-  # - {type: sweep, joint: right_ankle_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
+  #- {type: check, joint: right_ankle_roll, amplitude: 0.08, speed: 0.10}
+  #- {type: step,  joint: right_ankle_roll, amplitude: 0.05, hold: 1.0, repeat: 3}
+  #- {type: chirp, joint: right_ankle_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  #- {type: sweep, joint: right_ankle_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
 
   # ---- whole legs: open-loop replay of the reference walk (only after every joint passed 'check') ----
-  # - {type: replay, file: ../config/292.yaml}
+  - {type: replay, file: ../config/292.yaml}
