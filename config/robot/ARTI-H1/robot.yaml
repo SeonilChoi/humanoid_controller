@@ -50,7 +50,8 @@ foots:
   - name: right_foot_link
     offset: [-0.026, 0.0, -0.051]
 
-# Policy settings; must match the training env. agent.onnx = arti_h1 run29 agent_795000: zmp02 reference, hip_roll limit
+# Policy settings; must match the training env. agent.onnx = arti_h1 run32 agent_270000 (joint-velocity obs noise + wider actuator randomisation,
+# robust to the faster real joints of the 10-24 walk): zmp02 reference, hip_roll limit
 # +-15 deg, trained on the joint model identified from config/sysid logs (10-23) for the motor.yaml gains Unitree hip
 # 2.0 / 0.025, knee 2.5 / 0.025, CubeMars 30 / 0.5. If motor.yaml kp / kd change, re-measure and retrain before walking.
 # ONNX: input obs [1, 116]; outputs "actions" (fed back as previous actions) and "q_des" (joint targets, policy order;
