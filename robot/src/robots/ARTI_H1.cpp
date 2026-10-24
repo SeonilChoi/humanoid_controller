@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <ctime>
 #include <string>
 #include <thread>
 #include <chrono>
@@ -123,6 +124,29 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     gait_phase_rate_ = policy["gait_phase_rate"].as<double>();
     control_dt_ = policy["control_dt"].as<double>();
 
+    const YAML::Node log_file = YAML::LoadFile(config_file)["log_file"];
+    if (log_file && !log_file.as<std::string>().empty()) {
+        // <log_file>_YYYYmmdd_HHMMSS.csv, so runs never overwrite each other
+        char stamp[32];
+        const std::time_t now = std::time(nullptr);
+        std::strftime(stamp, sizeof(stamp), "_%Y%m%d_%H%M%S.csv", std::localtime(&now));
+        const std::string path = log_file.as<std::string>() + stamp;
+        log_file_ = std::fopen(path.c_str(), "w");
+        if (log_file_ == nullptr) {
+            std::cerr << "[ArtiH1] Cannot open log file " << path << ", logging disabled." << std::endl;
+        } else {
+            std::fprintf(log_file_, "t,phase");
+            for (std::size_t i = 0; i < OBSERVATION_SIZE; ++i) std::fprintf(log_file_, ",obs_%zu", i);
+            for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",q_des_%s", name);
+            for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",action_%s", name);
+            for (const char* name : kPolicyJointNames) {
+                std::fprintf(log_file_, ",pos_%s,vel_%s,tau_%s,temp_%s", name, name, name, name);
+            }
+            std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz\n");
+            std::cout << "[ArtiH1] Logging every control step to " << path << std::endl;
+        }
+    }
+
     observation_.clear();
     action_.clear();
 
@@ -134,6 +158,30 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
         motor_command_[i].kp = 0.0;
         motor_command_[i].kd = 0.0;
     }
+}
+
+robot::ArtiH1::~ArtiH1() {
+    if (log_file_ != nullptr) {
+        std::fclose(log_file_);
+        log_file_ = nullptr;
+    }
+}
+
+void robot::ArtiH1::write_log_row() {
+    // row = state the policy saw (observation_, motor / IMU read in observation()) and what it answered
+    if (log_start_ == std::chrono::steady_clock::time_point{}) log_start_ = std::chrono::steady_clock::now();
+    const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - log_start_).count();
+    std::fprintf(log_file_, "%.4f,%.5f", t, gait_phase_);
+    for (const double v : observation_) std::fprintf(log_file_, ",%.5f", v);
+    for (const double v : action_) std::fprintf(log_file_, ",%.5f", v);
+    for (const double v : previous_actions_) std::fprintf(log_file_, ",%.5f", v);
+    for (const char* name : kPolicyJointNames) {
+        const auto& s = last_motor_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))];
+        std::fprintf(log_file_, ",%.5f,%.4f,%.4f,%.0f", s.position, s.velocity, s.torque, s.temperature);
+    }
+    for (const double v : last_imu_orientation_) std::fprintf(log_file_, ",%.6f", v);
+    for (const double v : last_imu_angular_velocity_) std::fprintf(log_file_, ",%.5f", v);
+    std::fprintf(log_file_, "\n");
 }
 
 void robot::ArtiH1::initialize() {
@@ -317,7 +365,8 @@ void robot::ArtiH1::observation() {
 
     motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
     motor_manager_->read(motor_status);
-    
+    std::copy(motor_status, motor_status + NUM_JOINTS, last_motor_status_);
+
     // update kinematics with current motor positions
     Eigen::VectorXd joint_positions = Eigen::VectorXd::Zero(NUM_JOINTS);
 
@@ -331,6 +380,8 @@ void robot::ArtiH1::observation() {
     // read IMU data
     sensor_interface::imu_data_t imu_data{};
     sensor_manager_->sensor<sensor_interface::Imu>(imu_sensor_index_).read(imu_data);
+    for (std::size_t i = 0; i < 4; ++i) last_imu_orientation_[i] = imu_data.orientation[i];
+    for (std::size_t i = 0; i < 3; ++i) last_imu_angular_velocity_[i] = imu_data.angular_velocity[i];
 
     Eigen::Quaterniond world_q_imu(
         imu_data.orientation[0],
@@ -439,6 +490,8 @@ void robot::ArtiH1::control() {
             throw std::runtime_error("[ArtiH1::control] The ONNX model has no 'actions' output (needs pt_to_onnx.py export).");
         }
         std::copy(actions.begin(), actions.end(), previous_actions_.begin());
+
+        if (log_file_ != nullptr) write_log_row();
 
         // the env advances the clock once per control step (ArtiH1AmpEnv._pre_physics_step)
         gait_phase_ = std::fmod(gait_phase_ + control_dt_ * gait_phase_rate_, 1.0);

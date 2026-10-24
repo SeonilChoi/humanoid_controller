@@ -5,6 +5,9 @@ sensor_manager_config_file: ../config/robot/ARTI-H1/sensor.yaml
 joy_handler_config_file: ../config/robot/ARTI-H1/joy.yaml
 urdf_file: ../config/robot/ARTI-H1/robot.urdf
 model_file: ../config/robot/ARTI-H1/agent.onnx
+# Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
+# <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
+log_file: ./arti_h1_run
 
 motors:
   - name: left_hip_yaw

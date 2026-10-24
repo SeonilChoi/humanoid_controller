@@ -2,6 +2,8 @@
 #define ROBOT_ROBOTS_ARTI_H1_HPP_
 
 #include <array>
+#include <chrono>
+#include <cstdio>
 #include <unordered_map>
 
 #include "robot/core/robot.hpp"
@@ -13,7 +15,7 @@ class ArtiH1 : public Robot {
 public:
     explicit ArtiH1(const std::string& config_file);
 
-    virtual ~ArtiH1() = default;
+    virtual ~ArtiH1();
 
     void initialize() override;
 
@@ -62,6 +64,20 @@ private:
     double gait_phase_{0.0};                  // 0 = left single support start, as in the reference clips
 
     std::array<double, 12> previous_actions_{};
+
+    // Runtime log (robot.yaml 'log_file', empty = off): one CSV row per control step with the observation, the ONNX
+    // outputs, the motor states and the raw IMU, so a real run can be replayed / compared with the simulator.
+    std::FILE* log_file_{nullptr};
+
+    std::chrono::steady_clock::time_point log_start_{};
+
+    motor_interface::motor_state_t last_motor_status_[12]{};
+
+    std::array<double, 4> last_imu_orientation_{};   // w, x, y, z (sensor to world)
+
+    std::array<double, 3> last_imu_angular_velocity_{};
+
+    void write_log_row();
 };
 
 } // namespace robot
