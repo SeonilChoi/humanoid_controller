@@ -144,7 +144,10 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
             for (const char* name : kPolicyJointNames) {
                 std::fprintf(log_file_, ",pos_%s,vel_%s,tau_%s,temp_%s", name, name, name, name);
             }
-            std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz\n");
+            std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz");
+            // motor error code (Unitree: 1 overheat, 2 overcurrent, 3 overvoltage, 4 encoder fault)
+            for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",err_%s", name);
+            std::fprintf(log_file_, "\n");
             std::cout << "[ArtiH1] Logging every control step to " << path << std::endl;
         }
     }
@@ -224,6 +227,9 @@ void robot::ArtiH1::write_log_row() {
     }
     for (const double v : last_imu_orientation_) std::fprintf(log_file_, ",%.8g", v);
     for (const double v : last_imu_angular_velocity_) std::fprintf(log_file_, ",%.7g", v);
+    for (const char* name : kPolicyJointNames) {
+        std::fprintf(log_file_, ",%d", last_motor_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))].error);
+    }
     std::fprintf(log_file_, "\n");
 }
 

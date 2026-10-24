@@ -23,6 +23,10 @@ namespace unitree {
 
 constexpr speed_t UNITREE_BAUDRATE = B4000000;
 constexpr auto TIMEOUT = std::chrono::microseconds(10000);
+// Reply wait per motor. 8 motors share the bus in one 8 ms cycle (a 16-byte reply takes ~40 us at 4 Mbaud), so a
+// missed reply must not eat the whole cycle: with 10 ms every miss delayed all 8 motors by more than a cycle
+// (10-24 walk: hip / knee feedback stale on 10-17 % of the control steps, up to 150 ms).
+constexpr auto RX_TIMEOUT = std::chrono::microseconds(2000);
 constexpr int MAX_CONSECUTIVE_FAILURES = 5;
 
 class UnitreeMaster : public motor_interface::MotorMaster {
@@ -100,6 +104,8 @@ public:
             uint8_t tx[TX_PACKET_SIZE]{};
             const std::size_t tx_size = driver.encode(commands[i], tx, sizeof(tx));
 
+            // drop a late reply of the previous motor: read now it would fail this motor's ID check as well
+            ::tcflush(fd_, TCIFLUSH);
             send_packet(tx, tx_size);
 
             // a missed reply keeps the previous status, only repeated misses are fatal
@@ -199,7 +205,7 @@ private:
     std::size_t receive_packet(uint8_t* rx, std::size_t size) {
         if (size < 2) throw std::runtime_error("[UnitreeMaster::receive_packet] Invalid buffer size.");
 
-        const auto deadline = std::chrono::steady_clock::now() + TIMEOUT;
+        const auto deadline = std::chrono::steady_clock::now() + RX_TIMEOUT;
 
         bool saw_header = false;
         while (!saw_header) {
