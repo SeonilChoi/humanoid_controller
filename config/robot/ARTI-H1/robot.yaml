@@ -47,9 +47,11 @@ foots:
   - name: right_foot_link
     offset: [-0.026, 0.0, -0.051]
 
-# Policy settings; must match the training env (arti_h1 run28, zmp02 reference, hip_roll limit +-15 deg).
-# WARNING: agent.onnx (run28) was trained with joint-side gains 40 / 1.5 (hips, knees) and 30 / 0.8 (ankles), not with
-# the real gains below. Do not walk with it: retrain after the sysid fit (config/sysid) has matched the simulator.
+# Policy settings; must match the training env. agent.onnx = arti_h1 run29 agent_795000: zmp02 reference, hip_roll limit
+# +-15 deg, trained on the joint model identified from config/sysid logs (10-23) for the motor.yaml gains Unitree hip
+# 2.0 / 0.025, knee 2.5 / 0.025, CubeMars 30 / 0.5. If motor.yaml kp / kd change, re-measure and retrain before walking.
+# ONNX: input obs [1, 116]; outputs "actions" (fed back as previous actions) and "q_des" (joint targets, policy order;
+# includes the default pose and the nominal gait at the next clock phase, clamped to the training limits).
 policy:
   # Gait clock (cycles/s) advanced once per control step; the ONNX q_des already reads the nominal gait one step ahead.
   gait_phase_rate: 1.12045
