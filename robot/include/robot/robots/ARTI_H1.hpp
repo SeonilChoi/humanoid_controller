@@ -23,6 +23,13 @@ public:
 
     void control() override;
 
+    // Observation check (main.cpp --observe): print the last observation() in readable units (no policy, the motors
+    // keep holding the default pose). Tilt / move the robot by hand and check the signs.
+    void print_observation() const;
+
+    // Append the last observation() to the runtime log (if robot.yaml log_file is set); used by --observe.
+    void log_observation();
+
 private:
     void home(uint8_t index);
 

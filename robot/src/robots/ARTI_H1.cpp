@@ -167,20 +167,61 @@ robot::ArtiH1::~ArtiH1() {
     }
 }
 
+void robot::ArtiH1::print_observation() const {
+    if (observation_.size() != OBSERVATION_SIZE) return;
+    const auto& o = observation_;
+    constexpr double DEG = 180.0 / PI;
+    // [0:6] = heading-frame root x axis (tan) and z axis (norm): body z in the heading frame gives roll / pitch
+    const double roll = std::atan2(-o[4], o[5]) * DEG;   // + = right side down (x forward, y left, z up)
+    const double pitch = std::atan2(o[3], o[5]) * DEG;   // + = nose down
+    std::printf("\n[observe] root roll %+6.2f deg  pitch %+6.2f deg  | tan (%+.3f %+.3f %+.3f) norm (%+.3f %+.3f %+.3f)\n",
+                roll, pitch, o[0], o[1], o[2], o[3], o[4], o[5]);
+    std::printf("[observe] ang vel heading frame (rad/s)  x %+6.3f  y %+6.3f  z %+6.3f\n", o[6], o[7], o[8]);
+    std::printf("[observe] joint               motor(deg)  |angle| from obs tan-norm(deg)  vel(rad/s)\n");
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        // joint rotation R: tan = R e_x, norm = R e_z, R e_y = norm x tan; |angle| = acos((trace - 1) / 2) must equal
+        // |motor angle| (a mismatch means the observation joint order / mapping is wrong)
+        const double* r = &o[9 + 6 * i];
+        const double y_y = r[5] * r[0] - r[3] * r[2];   // (norm x tan).y
+        const double trace = r[0] + y_y + r[5];
+        const double angle = std::acos(std::clamp((trace - 1.0) / 2.0, -1.0, 1.0));
+        const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
+        const double motor = last_motor_status_[motor_index].position;
+        std::printf("[observe]   %-18s %+8.2f      %7.2f                      %+7.3f\n",
+                    kPolicyJointNames[i], motor * DEG, angle * DEG, o[81 + i]);
+    }
+    std::printf("[observe] toes (heading frame, mm)  left (%+6.1f %+6.1f %+6.1f)  right (%+6.1f %+6.1f %+6.1f)\n",
+                o[93] * 1000, o[94] * 1000, o[95] * 1000, o[96] * 1000, o[97] * 1000, o[98] * 1000);
+    std::printf("[observe] phase sin %+.3f cos %+.3f | command (%+.4f %+.4f %+.4f) | imu q (%+.3f %+.3f %+.3f %+.3f)\n",
+                o[111], o[112], o[113], o[114], o[115], last_imu_orientation_[0], last_imu_orientation_[1],
+                last_imu_orientation_[2], last_imu_orientation_[3]);
+    std::fflush(stdout);
+}
+
+void robot::ArtiH1::log_observation() {
+    if (log_file_ != nullptr) write_log_row();
+}
+
 void robot::ArtiH1::write_log_row() {
     // row = state the policy saw (observation_, motor / IMU read in observation()) and what it answered
     if (log_start_ == std::chrono::steady_clock::time_point{}) log_start_ = std::chrono::steady_clock::now();
     const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - log_start_).count();
     std::fprintf(log_file_, "%.4f,%.5f", t, gait_phase_);
-    for (const double v : observation_) std::fprintf(log_file_, ",%.5f", v);
-    for (const double v : action_) std::fprintf(log_file_, ",%.5f", v);
-    for (const double v : previous_actions_) std::fprintf(log_file_, ",%.5f", v);
+    for (const double v : observation_) std::fprintf(log_file_, ",%.7g", v);   // full precision: replayed through ONNX
+    // --observe mode has no policy output: q_des / action columns are nan there
+    const bool policy_ran = action_.size() == NUM_JOINTS;
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        if (policy_ran) std::fprintf(log_file_, ",%.7g", action_[i]); else std::fprintf(log_file_, ",nan");
+    }
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        if (policy_ran) std::fprintf(log_file_, ",%.7g", previous_actions_[i]); else std::fprintf(log_file_, ",nan");
+    }
     for (const char* name : kPolicyJointNames) {
         const auto& s = last_motor_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))];
-        std::fprintf(log_file_, ",%.5f,%.4f,%.4f,%.0f", s.position, s.velocity, s.torque, s.temperature);
+        std::fprintf(log_file_, ",%.7g,%.7g,%.5g,%.0f", s.position, s.velocity, s.torque, s.temperature);
     }
-    for (const double v : last_imu_orientation_) std::fprintf(log_file_, ",%.6f", v);
-    for (const double v : last_imu_angular_velocity_) std::fprintf(log_file_, ",%.5f", v);
+    for (const double v : last_imu_orientation_) std::fprintf(log_file_, ",%.8g", v);
+    for (const double v : last_imu_angular_velocity_) std::fprintf(log_file_, ",%.7g", v);
     std::fprintf(log_file_, "\n");
 }
 
