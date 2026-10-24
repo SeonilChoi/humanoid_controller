@@ -2,6 +2,7 @@
 #include <chrono>
 #include <csignal>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include "robot/robots/ARTI_H1.hpp"
@@ -39,6 +40,7 @@ int main(int argc, char* argv[])
             auto next_wakeup = std::chrono::steady_clock::now();
             int tick = 0;
             while (running) {
+                if (!robot.motors_running()) throw std::runtime_error("[main] Motor communication stopped (see the [MotorManager::run] message above).");
                 robot.observation();
                 robot.log_observation();
                 if (tick++ % 12 == 0) robot.print_observation();

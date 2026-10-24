@@ -59,6 +59,10 @@ policy:
   # Gait clock (cycles/s) advanced once per control step; the ONNX q_des already reads the nominal gait one step ahead.
   gait_phase_rate: 1.12045
   control_dt: 0.0166666667
+  # Gait clock at the policy start: the training standstill starts at the reference frame-0 phase (0.75602).
+  initial_gait_phase: 0.75602
+  # Pelvis tilt (rad) that counts as a fall: the policy stops and every joint is only damped (kp 0, motor.yaml kd).
+  max_tilt: 0.7
   # observation command = command * command_scale (command_linear/angular_velocity_scale).
   command_scale: [0.5, 0.5, 0.25]
   # Command at full stick: the training command range (vx m/s, vy m/s, yaw rate rad/s).

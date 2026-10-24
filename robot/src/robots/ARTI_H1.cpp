@@ -123,6 +123,8 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     command_max_ = read_array<3>(policy, "command_max");
     gait_phase_rate_ = policy["gait_phase_rate"].as<double>();
     control_dt_ = policy["control_dt"].as<double>();
+    if (policy["initial_gait_phase"]) initial_gait_phase_ = policy["initial_gait_phase"].as<double>();
+    if (policy["max_tilt"]) max_tilt_ = policy["max_tilt"].as<double>();
 
     const YAML::Node log_file = YAML::LoadFile(config_file)["log_file"];
     if (log_file && !log_file.as<std::string>().empty()) {
@@ -263,7 +265,7 @@ void robot::ArtiH1::initialize() {
         next_wakeup += HOMING_PERIOD;
         std::this_thread::sleep_until(next_wakeup);
     }
-    gait_phase_ = 0.0;
+    gait_phase_ = initial_gait_phase_;
     previous_actions_.fill(0.0);
 }
 
@@ -513,7 +515,30 @@ void robot::ArtiH1::observation() {
     observation_.push_back(-joy_data.stick_rx * command_max_[2] * command_scale_[2]);
 }
 
+void robot::ArtiH1::safe_stop(const std::string& reason) {
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        motor_command_[i] = motor_interface::motor_command_t{};
+        motor_command_[i].kd = policy_kd_[i];
+    }
+    if (motor_manager_->is_running()) {
+        motor_manager_->write(motor_command_);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));   // let every master send the damping command
+    }
+    if (log_file_ != nullptr) std::fflush(log_file_);
+    throw std::runtime_error("[ArtiH1::control] " + reason);
+}
+
 void robot::ArtiH1::control() {
+    // A master thread that throws ([MotorManager::run] ...) stops every motor thread: the motor states freeze and no
+    // command reaches the motors any more, so never keep running the policy on that data.
+    if (!motor_manager_->is_running()) {
+        safe_stop("Motor communication stopped (see the [MotorManager::run] message above).");
+    }
+    // observation_[5] = z of the pelvis z axis in the heading frame = cos(tilt)
+    if (!observation_.empty() && observation_[5] < std::cos(max_tilt_)) {
+        safe_stop("Pelvis tilt " + std::to_string(std::acos(std::clamp(observation_[5], -1.0, 1.0)) * 180.0 / PI) +
+                  " deg > max_tilt: fallen, joints damped.");
+    }
     if (!observation_.empty()) {
         // action_ = q_des (rad, policy order): default pose + scaled action + nominal gait at the next clock
         // phase, clamped to the training joint limits (hip_roll +-15 deg).

@@ -67,6 +67,8 @@ public:
         joy_handler_->stop();
     }
 
+    bool motors_running() const { return motor_manager_->is_running(); }
+
     virtual void initialize() = 0;
 
     virtual void observation() = 0;

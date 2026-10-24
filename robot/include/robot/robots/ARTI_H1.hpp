@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <cstdio>
+#include <string>
 #include <unordered_map>
 
 #include "robot/core/robot.hpp"
@@ -70,6 +71,10 @@ private:
 
     double gait_phase_{0.0};                  // 0 = left single support start, as in the reference clips
 
+    double initial_gait_phase_{0.0};          // clock at the policy start (training standstill = reference frame 0)
+
+    double max_tilt_{0.7};                    // rad; beyond it the policy stops and the joints are only damped
+
     std::array<double, 12> previous_actions_{};
 
     // Runtime log (robot.yaml 'log_file', empty = off): one CSV row per control step with the observation, the ONNX
@@ -85,6 +90,9 @@ private:
     std::array<double, 3> last_imu_angular_velocity_{};
 
     void write_log_row();
+
+    // Damping only (kp 0) on every joint, then throw: used when the robot falls or the motor link dies.
+    [[noreturn]] void safe_stop(const std::string& reason);
 };
 
 } // namespace robot
