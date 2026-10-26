@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "robot/core/robot.hpp"
 #include "robot/controllers/amp_controller.hpp"
@@ -73,7 +74,17 @@ private:
 
     double initial_gait_phase_{0.0};          // clock at the policy start (training standstill = reference frame 0)
 
-    double max_tilt_{0.7};                    // rad; beyond it the policy stops and the joints are only damped
+    double max_tilt_{0.7};
+
+    // Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to
+    // the next rest phase (mid double support) and stops there; empty = the clock always runs.
+    std::vector<double> gait_rest_phases_;
+
+    double stand_command_threshold_{0.0};
+
+    double stick_deadzone_{0.0};                 // |stick| below it counts as 0, so a released stick means "stand"
+
+    std::array<double, 3> command_{};           // last command (vx m/s, vy m/s, yaw rate rad/s)                    // rad; beyond it the policy stops and the joints are only damped
 
     std::array<double, 12> previous_actions_{};
 

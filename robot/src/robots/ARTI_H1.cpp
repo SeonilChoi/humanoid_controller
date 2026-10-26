@@ -125,6 +125,9 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     control_dt_ = policy["control_dt"].as<double>();
     if (policy["initial_gait_phase"]) initial_gait_phase_ = policy["initial_gait_phase"].as<double>();
     if (policy["max_tilt"]) max_tilt_ = policy["max_tilt"].as<double>();
+    if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
+    if (policy["stand_command_threshold"]) stand_command_threshold_ = policy["stand_command_threshold"].as<double>();
+    if (policy["stick_deadzone"]) stick_deadzone_ = policy["stick_deadzone"].as<double>();
 
     const YAML::Node log_file = YAML::LoadFile(config_file)["log_file"];
     if (log_file && !log_file.as<std::string>().empty()) {
@@ -516,9 +519,10 @@ void robot::ArtiH1::observation() {
     joy_handler_->read(joy_data);
 
     // command [113:116] = command * command_scale, full stick = the training command range
-    observation_.push_back(joy_data.stick_ly * command_max_[0] * command_scale_[0]);
-    observation_.push_back(-joy_data.stick_lx * command_max_[1] * command_scale_[1]);
-    observation_.push_back(-joy_data.stick_rx * command_max_[2] * command_scale_[2]);
+    const auto dead = [this](double v) { return std::abs(v) < stick_deadzone_ ? 0.0 : v; };
+    command_ = {dead(joy_data.stick_ly) * command_max_[0], -dead(joy_data.stick_lx) * command_max_[1],
+                -dead(joy_data.stick_rx) * command_max_[2]};
+    for (std::size_t i = 0; i < 3; ++i) observation_.push_back(command_[i] * command_scale_[i]);
 }
 
 void robot::ArtiH1::safe_stop(const std::string& reason) {
@@ -566,7 +570,18 @@ void robot::ArtiH1::control() {
         if (log_file_ != nullptr) write_log_row();
 
         // the env advances the clock once per control step (ArtiH1AmpEnv._pre_physics_step)
-        gait_phase_ = std::fmod(gait_phase_ + control_dt_ * gait_phase_rate_, 1.0);
+        // the env advances the clock the same way (ArtiH1AmpEnv._advance_gait_phase)
+        const double step = control_dt_ * gait_phase_rate_;
+        double next = std::fmod(gait_phase_ + step, 1.0);
+        const bool standing = std::max({std::abs(command_[0]), std::abs(command_[1]), std::abs(command_[2])})
+                              <= stand_command_threshold_;
+        if (standing) {
+            for (const double rest : gait_rest_phases_) {
+                const double ahead = std::fmod(rest - gait_phase_ + 1.0, 1.0);
+                if (ahead < step || ahead > 1.0 - 1e-6) next = rest;
+            }
+        }
+        gait_phase_ = next;
     }
     motor_manager_->write(motor_command_);
 }

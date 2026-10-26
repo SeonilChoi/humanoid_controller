@@ -65,6 +65,13 @@ policy:
   initial_gait_phase: 0.75602
   # Pelvis tilt (rad) that counts as a fall: the policy stops and every joint is only damped (kp 0, motor.yaml kd).
   max_tilt: 0.7
+  # Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to the
+  # next rest phase and stops there. [] = the clock always runs (run34 and earlier step in place at zero command).
+  # run35 (arti_h1_slow): gait_phase_rate 0.66667, initial_gait_phase 0.927, gait_rest_phases [0.427, 0.927].
+  gait_rest_phases: []
+  stand_command_threshold: 0.003
+  # |stick| below this is 0, so a released stick gives exactly the zero (standing) command.
+  stick_deadzone: 0.1
   # observation command = command * command_scale (command_linear/angular_velocity_scale).
   command_scale: [0.5, 0.5, 0.25]
   # Command at full stick: the training command range (vx m/s, vy m/s, yaw rate rad/s).
