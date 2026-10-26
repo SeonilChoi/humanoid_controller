@@ -50,32 +50,32 @@ foots:
   - name: right_foot_link
     offset: [-0.026, 0.0, -0.051]
 
-# Policy settings; must match the training env. agent.onnx = arti_h1 run34 agent_185000 (run32 + IMU matched to the real MTi-3: gyro
-# noise / bias / extra 1-step lag, stale Unitree hip / knee feedback, ankle_roll delay 10 ms, joint encoder offset
-# +-0.02 rad, IMU mount tilt +-0.02 rad): zmp02 reference, hip_roll limit
-# +-15 deg, trained on the joint model identified from config/sysid logs (10-23) for the motor.yaml gains Unitree hip
+# Policy settings; must match the training env. agent.onnx = arti_h1 run35 agent_820000: slow careful gait (arti_h1
+# reference, 1.5 s cycle, 0.75 s per step), zero command = stand still and balance (clock stops at a rest phase),
+# real motor.yaml joint limits, sim-to-real randomisation (MTi-3 IMU model, stale Unitree feedback, joint / IMU
+# offsets, ankle_roll delay 10 ms), hip_roll limit +-15 deg, trained on the joint model identified from config/sysid logs (10-23) for the motor.yaml gains Unitree hip
 # 2.0 / 0.025, knee 2.5 / 0.025, CubeMars 30 / 0.5. If motor.yaml kp / kd change, re-measure and retrain before walking.
 # ONNX: input obs [1, 116]; outputs "actions" (fed back as previous actions) and "q_des" (joint targets, policy order;
 # includes the default pose and the nominal gait at the next clock phase, clamped to the training limits).
 policy:
   # Gait clock (cycles/s) advanced once per control step; the ONNX q_des already reads the nominal gait one step ahead.
-  gait_phase_rate: 1.12045
+  gait_phase_rate: 0.66667
   control_dt: 0.0166666667
-  # Gait clock at the policy start: the training standstill starts at the reference frame-0 phase (0.75602).
-  initial_gait_phase: 0.75602
+  # Gait clock at the policy start: a rest phase (the robot starts standing; the clock waits there for a command).
+  initial_gait_phase: 0.927
   # Pelvis tilt (rad) that counts as a fall: the policy stops and every joint is only damped (kp 0, motor.yaml kd).
   max_tilt: 0.7
   # Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to the
   # next rest phase and stops there. [] = the clock always runs (run34 and earlier step in place at zero command).
   # run35 (arti_h1 slow gait): gait_phase_rate 0.66667, initial_gait_phase 0.927, gait_rest_phases [0.427, 0.927].
-  gait_rest_phases: []
+  gait_rest_phases: [0.427, 0.927]
   stand_command_threshold: 0.003
   # |stick| below this is 0, so a released stick gives exactly the zero (standing) command.
   stick_deadzone: 0.1
   # observation command = command * command_scale (command_linear/angular_velocity_scale).
   command_scale: [0.5, 0.5, 0.25]
   # Command at full stick: the training command range (vx m/s, vy m/s, yaw rate rad/s).
-  command_max: [0.079, 0.028, 0.079]
+  command_max: [0.046, 0.0172, 0.0456]
   # First reference frame (policy / Isaac joint order); the robot moves here after homing before the policy starts.
   default_pose: [0.0, 0.0, 0.0, 0.0, -0.10078, -0.10078, 0.20157, 0.20157, 0.10078, 0.10079, 0.0, 0.0]
   # PD gains while walking: motor.yaml 'kp' / 'kd' of each motor (motor_command_ values, driver units).
