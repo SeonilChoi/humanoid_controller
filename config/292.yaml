@@ -1,4 +1,4 @@
-motion_file: C:\projects\arti_h1\source\arti_h1\arti_h1\robots\..\assets\motions\arti_h1_slow\292.json
+motion_file: C:\projects\arti_h1\source\arti_h1\arti_h1\robots\..\assets\motions\arti_h1\292.json
 dt: 0.016666666666666666
 num_steps: 899
 joint_names: [left_hip_yaw, right_hip_yaw, left_hip_roll, right_hip_roll, left_hip_pitch,

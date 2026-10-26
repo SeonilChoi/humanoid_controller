@@ -67,7 +67,7 @@ policy:
   max_tilt: 0.7
   # Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to the
   # next rest phase and stops there. [] = the clock always runs (run34 and earlier step in place at zero command).
-  # run35 (arti_h1_slow): gait_phase_rate 0.66667, initial_gait_phase 0.927, gait_rest_phases [0.427, 0.927].
+  # run35 (arti_h1 slow gait): gait_phase_rate 0.66667, initial_gait_phase 0.927, gait_rest_phases [0.427, 0.927].
   gait_rest_phases: []
   stand_command_threshold: 0.003
   # |stick| below this is 0, so a released stick gives exactly the zero (standing) command.
