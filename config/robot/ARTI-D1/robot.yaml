@@ -45,7 +45,7 @@ motors:
 sensors:
   - name: imu_body
     index: 0
-    # Xsens MTi on the trunk frame (arti_d1_env_cfg.py ARTI_D1_IMU_OFFSET_FROM_PELVIS = trunk 0.00965 / 0 / 0.226248).
+    # Xsens MTi on the trunk frame (arti_d1_env_cfg.py ARTI_D1_IMU_OFFSET_FROM_PELVIS = trunk 0.00965 / 0 / 0.246248).
     # Assumed mount: measure the real one and update both this and the training cfg.
     frame: trunk
     translation: [0.0, 0.0, 0.0]
@@ -54,34 +54,34 @@ sensors:
 # Sole centre in each foot link (ARTI_D1_*_FOOT_OFFSET_FROM_FOOT_LINK; the legs are mirrored in y).
 foots:
   - name: left_foot_link
-    offset: [0.0135624237, -0.024, -0.0393326454]
+    offset: [0.0135599213, -0.024, -0.0593316689]
   - name: right_foot_link
-    offset: [0.0135624237, 0.024, -0.039332653]
+    offset: [0.0135599213, 0.024, -0.0593316765]
 
 # Policy settings; must match the training env (arti_d1 arti_d1_env_cfg.py). Reference gait = motion_generator arti_d1
-# (0.72 s cycle, 0.3 s single support), zero command = stand still (the clock stops at a rest phase), URDF joint limits,
+# (1.25 s cycle, 0.5 s single support), zero command = stand still (the clock stops at a rest phase), URDF joint limits,
 # Dynamixel position-mode model (XH540-W270 legs / XM430-W350 arms, Position P Gain 800, D 0).
 # If motor.yaml kp / kd change, the sim gains (arti_d1 robots/arti_d1.py) must change with them before retraining.
 # ONNX: input obs [1, 132]; outputs "actions" (fed back as previous actions) and "q_des" (joint targets, policy order;
 # includes the default pose and the nominal gait at the next clock phase, clamped to the training limits).
 policy:
   # Gait clock (cycles/s) advanced once per control step; the ONNX q_des already reads the nominal gait one step ahead.
-  gait_phase_rate: 1.38889
+  gait_phase_rate: 0.8
   control_dt: 0.0166666667
   # Gait clock at the policy start: a rest phase (the robot starts standing; the clock waits there for a command).
-  initial_gait_phase: 0.9708
+  initial_gait_phase: 0.96
   # Pelvis tilt (rad) that counts as a fall: the policy stops and every servo gets Position P Gain 0.
   max_tilt: 0.7
   # Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to the
   # next rest phase (mid double support) and stops there.
-  gait_rest_phases: [0.4708, 0.9708]
+  gait_rest_phases: [0.46, 0.96]
   stand_command_threshold: 0.003
   # |stick| below this is 0, so a released stick gives exactly the zero (standing) command.
   stick_deadzone: 0.1
   # observation command = command * command_scale (command_linear/angular_velocity_scale).
   command_scale: [0.5, 0.5, 0.25]
   # Command at full stick: the training command range (vx m/s, vy m/s, yaw rate rad/s).
-  command_max: [0.133, 0.054, 0.247]
+  command_max: [0.0812, 0.0271, 0.1349]
   # First reference frame (policy order); the robot moves here from its power-on pose before the policy starts.
-  default_pose: [0.0, 0.0, 0.0, 0.0, -0.3141, -0.00424, -0.3141, 0.00436, -0.11294, -0.11284, 0.29456, 0.29438, -0.18163, -0.18153]
+  default_pose: [-0.0006, 0.0, -0.0006, 0.0, -0.2268, -0.07065, -0.2268, 0.07065, -0.0127, -0.01269, 0.09122, 0.09122, -0.07853, -0.07853]
   # PD gains while walking: motor.yaml 'kp' / 'kd' of each motor (Dynamixel Position P / D Gain register values).
