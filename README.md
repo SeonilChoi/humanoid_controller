@@ -105,6 +105,7 @@ After a successful build, you will find these programs:
 - `build/examples/example_dynamixel` — test Dynamixel motors
 - `build/examples/example_xsens` — test the IMU
 - `build/examples/example_dualsense` — test the joystick
+- `build/examples/example_action` — play a demo gait trajectory on the ARTI-D1 servos
 - `build/ARTI-D1` — run the ARTI-D1 robot
 
 Run the commands from `build/`. Press `Ctrl+C` to stop.
@@ -117,6 +118,19 @@ cd ~/humanoid_controller/build
 ./examples/example_cubemars ../config/hardware/motor/cubemars.yaml 0.0
 ./examples/example_dynamixel ../config/hardware/motor/dynamixel.yaml 0.0
 ```
+
+### Demo trajectory test (ARTI-D1)
+Plays the joint targets of a demo gait open loop on the servos (no policy, no IMU), to check that the real joints
+follow the reference motion. No homing: the servos start limp, move from where they are to the first step over 3 s,
+hold it 2 s, play the log at its dt, then go back to the first step and hold it until `Ctrl+C`.
+Hang the robot so the feet are off the ground for the first runs.
+The optional last argument writes a CSV with the target and the measured angle of every joint per step.
+```bash
+cd ~/humanoid_controller/build
+./examples/example_action ../config/robot/ARTI-D1/motor.yaml ../config/954.yaml tracking_954.csv
+```
+`config/954.yaml` is the arti_d1 reference motion 954 (straight walk, 0.06 m/s, 15 s), made with
+`python scripts/replay_demo.py --motion_set arti_d1 --index 954 --output 954.yaml --headless --no_realtime` in arti_d1.
 
 ### Sensor test
 ```bash

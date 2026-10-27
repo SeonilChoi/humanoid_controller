@@ -14,3 +14,4 @@
 
 # runtime logs (robot.yaml log_file)
 arti_d1_run_*.csv
+tracking_*.csv
