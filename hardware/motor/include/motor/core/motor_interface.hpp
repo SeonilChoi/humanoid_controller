@@ -5,7 +5,7 @@
 
 namespace motor_interface {
 
-static constexpr uint8_t MAX_MOTORS = 16;  // ARTI-H1 12, ARTI-D1 14
+static constexpr uint8_t MAX_MOTORS = 16;  // ARTI-D1 14
 
 struct motor_command_t {
     double position{};

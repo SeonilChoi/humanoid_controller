@@ -65,7 +65,7 @@ void controller::AmpController::initialize() {
     const auto input_name = impl_->session->GetInputNameAllocated(0, allocator);
     impl_->input_name = input_name.get();
 
-    // arti_h1 scripts/pt_to_onnx.py exports ("actions", "q_des"): send q_des to the motors, feed actions back.
+    // scripts/pt_to_onnx.py (ARTI-D1_IsaacLab) exports ("actions", "q_des"): send q_des to the motors, feed actions back.
     std::size_t output_index = 0;
     const std::size_t n_outputs = impl_->session->GetOutputCount();
     for (std::size_t i = 0; i < n_outputs; ++i) {

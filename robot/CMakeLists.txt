@@ -15,7 +15,7 @@ target_link_libraries(controller PUBLIC yaml-cpp ${ONNXRUNTIME_LIB})
 
 target_compile_features(controller PUBLIC cxx_std_17)
 
-add_library(robot src/robots/ARTI_H1.cpp src/robots/ARTI_D1.cpp)
+add_library(robot src/robots/ARTI_D1.cpp)
 
 target_include_directories(robot PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

@@ -105,7 +105,6 @@ After a successful build, you will find these programs:
 - `build/examples/example_dynamixel` — test Dynamixel motors
 - `build/examples/example_xsens` — test the IMU
 - `build/examples/example_dualsense` — test the joystick
-- `build/ARTI-H1` — run the ARTI-H1 robot
 - `build/ARTI-D1` — run the ARTI-D1 robot
 
 Run the commands from `build/`. Press `Ctrl+C` to stop.
@@ -134,7 +133,7 @@ udevadm info -a /dev/input/js0 | grep -E 'DRIVER'
 
 You will see `hid-generic` or `hid-playstation`.
 Then set `axis_layout` in `config/hardware/joy/dualsense.yaml`
-(and in `config/robot/ARTI-H1/joy.yaml` if you run the robot):
+(and in `config/robot/ARTI-D1/joy.yaml` if you run the robot):
 
 - `hid-generic` → `generic`
 - `hid-playstation` → `playstation`
@@ -149,12 +148,6 @@ axis_layout: generic
 ```bash
 cd ~/humanoid_controller/build
 ./examples/example_dualsense ../config/hardware/joy/dualsense.yaml
-```
-
-### Robot
-```bash
-cd ~/humanoid_controller/build
-./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml
 ```
 
 ### ARTI-D1
@@ -251,7 +244,7 @@ echo -e 'slcan\ngs_usb' | sudo tee /etc/modules-load.d/can-extra.conf
 ```
 
 Bring up the CAN interface.
-Use the same name as in your motor config. For example, `config/robot/ARTI-H1/motor.yaml` uses `can1`.
+Use the same name as in your motor config. For example, `config/hardware/motor/cubemars.yaml` uses `can1`.
 After the udev rules, the CANable adapter may appear as `/dev/CANable`.
 ```bash
 sudo slcand -o -c -s8 /dev/CANable can1

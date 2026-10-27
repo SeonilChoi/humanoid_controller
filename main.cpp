@@ -5,14 +5,8 @@
 #include <stdexcept>
 #include <string>
 
-// One executable per robot (CMakeLists.txt): ARTI-H1 (default) and ARTI-D1 (-DROBOT_ARTI_D1).
-#ifdef ROBOT_ARTI_D1
 #include "robot/robots/ARTI_D1.hpp"
 using RobotType = robot::ArtiD1;
-#else
-#include "robot/robots/ARTI_H1.hpp"
-using RobotType = robot::ArtiH1;
-#endif
 
 namespace {
 volatile std::sig_atomic_t running = 1;
