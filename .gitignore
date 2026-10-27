@@ -11,3 +11,8 @@
 *.out
 
 .vscode/
+
+# runtime logs (robot.yaml log_file, example_sysid output)
+arti_h1_run_*.csv
+sysid_logs/
+sysid_logs.zip
