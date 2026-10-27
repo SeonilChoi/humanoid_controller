@@ -10,9 +10,11 @@
 namespace dynamixel {
 
 constexpr std::size_t TX_DATA_SIZE = 4;
+constexpr std::size_t GAIN_DATA_SIZE = 6;
 constexpr std::size_t RX_DATA_SIZE = 21;
 
 constexpr uint16_t ADDR_TORQUE_ENABLE = 64;
+constexpr uint16_t ADDR_POSITION_D_GAIN = 80;   // D (80), I (82), P (84): 2 bytes each, written together
 constexpr uint16_t ADDR_GOAL_POSITION = 116;
 constexpr uint16_t ADDR_PRESENT_CURRENT = 126;
 
@@ -39,10 +41,9 @@ public:
 
         write_s32_little_endian(buffer, position(command.position));
 
+        // kp / kd go to the servo's Position P / D Gain registers (DynamixelMaster writes them when they change).
         (void)command.velocity;
         (void)command.torque;
-        (void)command.kp;
-        (void)command.kd;
         
         return TX_DATA_SIZE;
     }
@@ -60,6 +61,23 @@ public:
         status.velocity = velocity(velocity_raw);
         status.torque = torque(current_raw);
         status.temperature = static_cast<double>(temperature_raw);
+    }
+
+    // Position D / I / P Gain registers (80 / 82 / 84) from motor_command_t kd / kp (register values, I = 0).
+    std::size_t encode_gains(const motor_interface::motor_command_t& command, uint8_t* buffer, std::size_t size) {
+        if (buffer == nullptr) throw std::runtime_error("[DynamixelDriver::encode_gains] Null buffer.");
+        if (size != GAIN_DATA_SIZE) throw std::runtime_error("[DynamixelDriver::encode_gains] Invalid buffer size.");
+
+        const auto gain = [](double value) { return static_cast<uint16_t>(clamp(value, 0.0, 16383.0) + 0.5); };
+        const uint16_t d = gain(command.kd);
+        const uint16_t p = gain(command.kp);
+        buffer[0] = static_cast<uint8_t>(d);
+        buffer[1] = static_cast<uint8_t>(d >> 8);
+        buffer[2] = 0;
+        buffer[3] = 0;
+        buffer[4] = static_cast<uint8_t>(p);
+        buffer[5] = static_cast<uint8_t>(p >> 8);
+        return GAIN_DATA_SIZE;
     }
 
     std::size_t enable(uint8_t* buffer, std::size_t size) override {
@@ -93,7 +111,8 @@ private:
         if (zero_offset_ == -10.0) {
             return motor / gear_ratio_ * axis_;
         } else {
-            return motor / gear_ratio_ * axis_ - zero_offset_;
+            // inverse of position(double): motor / gear = joint * axis + zero_offset (also right for axis -1)
+            return (motor / gear_ratio_ - zero_offset_) * axis_;
         }
     }
     double velocity(const int32_t& value) {

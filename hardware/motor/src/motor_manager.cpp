@@ -126,18 +126,27 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
 
             masters_[master_id]->add_motor(motor_id, gear_ratio, axis, pulse_per_revolution, min, max);
 
+            // Absolute encoders (Dynamixel): the joint zero is a fixed motor angle, no homing run. zero_offset is in
+            // motor radians at the output (motor / gear_ratio = joint * axis + zero_offset).
+            if (motor["zero_offset"] && !motor["homing_direction"]) {
+                masters_[master_id]->set_zero_offset(motor_id, motor["zero_offset"].as<double>());
+            }
+
+            // Homing against a mechanical stopper (Unitree / CubeMars); optional for absolute-encoder motors.
             motor_interface::motor_homing_t& homing = homing_[motor_id - 1];
-            homing.direction = motor["homing_direction"].as<int8_t>();
-            homing.offset = motor["homing_offset"].as<double>();
-            homing.velocity = motor["homing_velocity"].as<double>();
-            homing.kp = motor["homing_kp"].as<double>();
-            homing.kd = motor["homing_kd"].as<double>();
-            homing.zero_kp = motor["homing_zero_kp"].as<double>();
-            homing.zero_kd = motor["homing_zero_kd"].as<double>();
-            homing.hold_kp = motor["homing_hold_kp"].as<double>();
-            homing.hold_kd = motor["homing_hold_kd"].as<double>();
-            homing.torque_threshold = motor["homing_torque_threshold"].as<double>();
-            homing.velocity_threshold = motor["homing_velocity_threshold"].as<double>();
+            if (motor["homing_direction"]) {
+                homing.direction = motor["homing_direction"].as<int8_t>();
+                homing.offset = motor["homing_offset"].as<double>();
+                homing.velocity = motor["homing_velocity"].as<double>();
+                homing.kp = motor["homing_kp"].as<double>();
+                homing.kd = motor["homing_kd"].as<double>();
+                homing.zero_kp = motor["homing_zero_kp"].as<double>();
+                homing.zero_kd = motor["homing_zero_kd"].as<double>();
+                homing.hold_kp = motor["homing_hold_kp"].as<double>();
+                homing.hold_kd = motor["homing_hold_kd"].as<double>();
+                homing.torque_threshold = motor["homing_torque_threshold"].as<double>();
+                homing.velocity_threshold = motor["homing_velocity_threshold"].as<double>();
+            }
 
             if (!motor["kp"] || !motor["kd"]) {
                 throw std::runtime_error("[MotorManager::load] Motor " + std::to_string(motor_id_int) + " needs 'kp' and 'kd'.");

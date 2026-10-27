@@ -1,0 +1,7 @@
+sensors:
+  - index: 0
+    sensor: imu
+    type: xsens_mti
+    device: /dev/Xsens
+    baudrate: 115200
+    period: 1000

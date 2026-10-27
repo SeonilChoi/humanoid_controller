@@ -52,7 +52,7 @@ public:
     }
 
     virtual ~Robot() {
-        controller_->shutdown();
+        if (controller_) controller_->shutdown();
     }
 
     void start() {

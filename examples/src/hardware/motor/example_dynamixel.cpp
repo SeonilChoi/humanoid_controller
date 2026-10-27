@@ -27,6 +27,9 @@ int main(int argc, char* argv[])
     motor_interface::motor_command_t command[motor_interface::MAX_MOTORS]{};
     for (int i = 0; i < n_motors; ++i) {
         command[i].position = goal_position;
+        // Position P / D Gain register values from motor.yaml kp / kd (kp 0 would leave the servo limp)
+        command[i].kp = motor_manager.gains(static_cast<uint8_t>(i)).kp;
+        command[i].kd = motor_manager.gains(static_cast<uint8_t>(i)).kd;
     }
     motor_interface::motor_state_t status[motor_interface::MAX_MOTORS]{};
 

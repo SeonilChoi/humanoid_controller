@@ -1,3 +1,6 @@
+# One Dynamixel X-series servo in Position Control Mode (absolute encoder, no homing).
+# zero_offset: motor angle (rad) of the joint zero, pi = pulse 2048 (motor / gear_ratio = joint * axis + zero_offset).
+# kp / kd: Position P / D Gain register values written to the servo (factory P 800, D 0).
 masters:
   - id: 0
     period: 1000 # microseconds
@@ -7,7 +10,10 @@ masters:
     motors:
       - id: 1
         gear_ratio: 1.0
-        zero_offset: 0.0
+        axis: 1
+        zero_offset: 3.14159265
         pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
         min: -0.6
         max:  0.6

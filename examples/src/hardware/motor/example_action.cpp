@@ -17,7 +17,7 @@ namespace {
 volatile std::sig_atomic_t running = 1;
 void on_sigint(int) { running = 0; }
 
-constexpr const char* kMotorNames[motor_interface::MAX_MOTORS] = {
+constexpr const char* kMotorNames[] = {
     "left_hip_yaw",
     "right_hip_yaw",
     "left_hip_roll",
@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     const YAML::Node action_names = logs["action_names"];
     if (action_names && action_names.IsSequence()) {
         std::unordered_map<std::string, int> motor_index;
-        for (int i = 0; i < motor_interface::MAX_MOTORS; ++i) {
+        for (int i = 0; i < static_cast<int>(sizeof(kMotorNames) / sizeof(kMotorNames[0])); ++i) {
             motor_index.emplace(kMotorNames[i], i);
         }
 

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <stdexcept>
+#include <unordered_map>
 
 #include <poll.h>
 #include <fcntl.h>
@@ -45,6 +46,7 @@ public:
 
     void add_motor(uint8_t id, double gear_ratio, int8_t axis, uint32_t pulse_per_revolution, double min, double max) override {
         drivers_[id] = std::make_unique<dynamixel::DynamixelDriver>(id, gear_ratio, axis, pulse_per_revolution, min, max);
+        dynamixel_drivers_[id] = static_cast<dynamixel::DynamixelDriver*>(drivers_[id].get());
         ids_[n_ids_++] = id;
     }
     
@@ -122,6 +124,8 @@ public:
     }
 
     virtual void update(const motor_interface::motor_command_t* commands, motor_interface::motor_state_t* status) override {
+        write_gains(commands);
+
         uint8_t data[4 + motor_interface::MAX_MOTORS * (1 + TX_DATA_SIZE)]{};
         data[0] = static_cast<uint8_t>(ADDR_GOAL_POSITION);
         data[1] = static_cast<uint8_t>(ADDR_GOAL_POSITION >> 8);
@@ -173,6 +177,35 @@ public:
     }
 
 private:
+    // motor_command_t kp / kd = Position P / D Gain register values: sync-written only when they change (kp 0 = no
+    // position control, the servo only follows the D term), so the policy loop normally sends goal positions only.
+    void write_gains(const motor_interface::motor_command_t* commands) {
+        bool changed = false;
+        for (uint8_t i = 0; i < n_ids_; ++i) {
+            changed |= commands[i].kp != last_kp_[i] || commands[i].kd != last_kd_[i];
+        }
+        if (!changed) return;
+
+        uint8_t data[4 + motor_interface::MAX_MOTORS * (1 + GAIN_DATA_SIZE)]{};
+        data[0] = static_cast<uint8_t>(ADDR_POSITION_D_GAIN);
+        data[1] = static_cast<uint8_t>(ADDR_POSITION_D_GAIN >> 8);
+        data[2] = static_cast<uint8_t>(GAIN_DATA_SIZE);
+        data[3] = static_cast<uint8_t>(GAIN_DATA_SIZE >> 8);
+
+        std::size_t n = 4;
+        for (uint8_t i = 0; i < n_ids_; ++i) {
+            data[n++] = ids_[i];
+            n += dynamixel_drivers_.at(ids_[i])->encode_gains(commands[i], data + n, GAIN_DATA_SIZE);
+            last_kp_[i] = commands[i].kp;
+            last_kd_[i] = commands[i].kd;
+        }
+
+        uint8_t tx[MAX_PACKET_SIZE]{};
+        const std::size_t tx_size = make_packet(tx, sizeof(tx), BROADCAST_ID, INST_SYNC_WRITE, data, n);
+        ::tcflush(fd_, TCIOFLUSH);
+        send_packet(tx, tx_size);
+    }
+
     std::size_t make_packet(uint8_t* packet, std::size_t max_packet_size, uint8_t id, uint8_t inst, const uint8_t* data, std::size_t data_size) {
         const uint16_t length = static_cast<uint16_t>(data_size + 3);
         const std::size_t total = 10 + data_size;
@@ -346,6 +379,13 @@ private:
     std::string device_;
 
     int fd_{-1};
+
+    std::unordered_map<uint8_t, dynamixel::DynamixelDriver*> dynamixel_drivers_;
+
+    double last_kp_[motor_interface::MAX_MOTORS]{-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
+                                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0};
+
+    double last_kd_[motor_interface::MAX_MOTORS]{};
 };
 
 } // namespace dynamixel

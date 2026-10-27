@@ -32,7 +32,7 @@ namespace {
 volatile std::sig_atomic_t running = 1;
 void on_sigint(int) { running = 0; }
 
-constexpr int N = motor_interface::MAX_MOTORS;
+constexpr int N = 12;  // ARTI-H1 joints
 constexpr double PI = 3.14159265358979323846;
 constexpr double HW_MARGIN = 0.05;  // rad kept inside motor.yaml min/max
 

@@ -1,0 +1,156 @@
+# ARTI-D1: every joint is a Dynamixel X-series servo in Position Control Mode on one bus (IDs 1-14 = robot.yaml
+# motor index + 1 = the Isaac Lab arti_d1 joint order). Legs XH540-W270, arms XM430-W350.
+# Servo setup before the first run (Dynamixel Wizard): ID, Baud Rate 1 Mbps, Operating Mode 3 (Position), Return Delay
+# Time 0 (default 250 us makes one bus cycle ~8 ms longer).
+# kp / kd: Position P / D Gain register values written to the servo; P 800 / D 0 is the factory setting and what the
+#   arti_d1 training sim models (robots/arti_d1.py). Change them only together with the sim gains.
+# zero_offset: motor angle (rad) at the joint zero, motor / gear_ratio = joint * axis + zero_offset; pi = pulse 2048.
+#   axis / zero_offset are assembly dependent: check every joint with `ARTI-D1 ... --observe` (the printed motor angle
+#   must follow the URDF axis sign and read the default pose when the robot is in it) before enabling the policy.
+# min / max: the URDF joint limits (= the training sim limits); goal positions are clamped to them.
+masters:
+  - id: 0
+    period: 10000 # microseconds; 14 status packets at 1 Mbps need ~5 ms with Return Delay Time 0
+    type: dynamixel
+    device: /dev/Dynamixel
+
+    motors:
+      - id: 1    # left_arm_m8 (XM430-W350)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -1.134460
+        max: 0.436332
+
+      - id: 2    # left_hip_yaw (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -0.523599
+        max: 0.523599
+
+      - id: 3    # right_arm_m8 (XM430-W350)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -1.134460
+        max: 0.436332
+
+      - id: 4    # right_hip_yaw (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -0.523599
+        max: 0.523599
+
+      - id: 5    # left_arm_m8crank_plate (XM430-W350)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -0.314159
+        max: 1.256640
+
+      - id: 6    # left_hip_roll (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -0.314159
+        max: 0.209440
+
+      - id: 7    # right_arm_m8crank_plate (XM430-W350)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -0.314159
+        max: 1.256640
+
+      - id: 8    # right_hip_roll (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -0.209440
+        max: 0.314159
+
+      - id: 9    # left_hip_pitch (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -1.156110
+        max: 0.781209
+
+      - id: 10    # right_hip_pitch (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -1.156110
+        max: 0.781209
+
+      - id: 11    # left_knee (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -0.354302
+        max: 1.548110
+
+      - id: 12    # right_knee (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -0.354302
+        max: 1.548110
+
+      - id: 13    # left_ankle (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -1.962730
+        max: 0.725080
+
+      - id: 14    # right_ankle (XH540-W270)
+        gear_ratio: 1.0
+        axis: 1
+        zero_offset: 3.14159265
+        pulse_per_revolution: 4096
+        kp: 800
+        kd: 0
+        min: -1.962730
+        max: 0.725080

@@ -17,3 +17,7 @@ add_subdirectory(examples)
 
 add_executable(ARTI-H1 main.cpp)
 target_link_libraries(ARTI-H1 PRIVATE robot)
+
+add_executable(ARTI-D1 main.cpp)
+target_compile_definitions(ARTI-D1 PRIVATE ROBOT_ARTI_D1)
+target_link_libraries(ARTI-D1 PRIVATE robot)

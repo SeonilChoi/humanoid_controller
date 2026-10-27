@@ -105,7 +105,8 @@ After a successful build, you will find these programs:
 - `build/examples/example_dynamixel` — test Dynamixel motors
 - `build/examples/example_xsens` — test the IMU
 - `build/examples/example_dualsense` — test the joystick
-- `build/ARTI-H1` — run the robot
+- `build/ARTI-H1` — run the ARTI-H1 robot
+- `build/ARTI-D1` — run the ARTI-D1 robot
 
 Run the commands from `build/`. Press `Ctrl+C` to stop.
 
@@ -154,6 +155,39 @@ cd ~/humanoid_controller/build
 ```bash
 cd ~/humanoid_controller/build
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml
+```
+
+### ARTI-D1
+
+ARTI-D1 uses Dynamixel servos only (legs XH540-W270, arms XM430-W350) on one bus (`/dev/Dynamixel`), trained with
+[ARTI-D1_IsaacLab](https://github.com/SeonilChoi/ARTI-D1_IsaacLab).
+
+The Dynamixel IDs follow the training (Isaac Lab) joint order:
+
+| ID | joint | ID | joint |
+|---:|---|---:|---|
+| 1 | left_arm_m8 | 8 | right_hip_roll |
+| 2 | left_hip_yaw | 9 | left_hip_pitch |
+| 3 | right_arm_m8 | 10 | right_hip_pitch |
+| 4 | right_hip_yaw | 11 | left_knee |
+| 5 | left_arm_m8crank_plate | 12 | right_knee |
+| 6 | left_hip_roll | 13 | left_ankle |
+| 7 | right_arm_m8crank_plate | 14 | right_ankle |
+
+Servo setup (Dynamixel Wizard): ID as above, Baud Rate 1 Mbps, Operating Mode 3 (Position), Return Delay Time 0.
+The servos have absolute encoders, so there is no homing: `config/robot/ARTI-D1/motor.yaml` sets each joint zero with
+`zero_offset` (motor angle in rad, pi = pulse 2048) and the direction with `axis`. `kp` / `kd` are the Position P / D
+Gain register values the controller writes (factory 800 / 0, the values the training sim models).
+
+Check the joints and the IMU first (no policy, the robot holds the default pose):
+```bash
+./ARTI-D1 ../config/robot/ARTI-D1/robot.yaml --observe
+```
+Every printed motor angle must match the URDF joint direction and read the default pose; fix `axis` / `zero_offset`
+otherwise. Then export the policy (`python scripts/pt_to_onnx.py --checkpoint <agent_N.pt> --output agent.onnx` in
+ARTI-D1_IsaacLab), copy it to `config/robot/ARTI-D1/agent.onnx` and run:
+```bash
+./ARTI-D1 ../config/robot/ARTI-D1/robot.yaml
 ```
 
 ## Troubleshooting
