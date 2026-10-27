@@ -12,6 +12,7 @@ model_file: ../config/robot/ARTI-D1/agent.onnx
 log_file: ./arti_d1_run
 
 # Policy (Isaac Lab arti_d1 robot.data.joint_names) order. The Dynamixel ID of each joint is index + 1.
+# {side}_arm_m8crank_plate is passive on the real robot: its ID is the shoulder m7 servo, mapped by ARTI_D1_shoulder.
 motors:
   - name: left_arm_m8
     index: 0

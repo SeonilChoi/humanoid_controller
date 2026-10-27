@@ -21,6 +21,7 @@
 #include "robot/controllers/amp_controller.hpp"
 
 #include "robot/robots/ARTI_D1.hpp"
+#include "robot/robots/ARTI_D1_shoulder.hpp"
 
 namespace {
 
@@ -39,7 +40,8 @@ constexpr auto STAND_UP_PERIOD = std::chrono::milliseconds(10);
 constexpr double PI = 3.14159265358979323846;
 
 // Isaac Lab articulation order of arti_d1 (robot.data.joint_names) = the policy observation / action order. The
-// Dynamixel IDs 1-14 (robot.yaml motor index 0-13) follow the same order.
+// Dynamixel IDs 1-14 (robot.yaml motor index 0-13) follow the same order; the {side}_arm_m8crank_plate IDs are the
+// real m7 servos of the shoulder 5-bar (ARTI_D1_shoulder.hpp).
 constexpr const char* kPolicyJointNames[NUM_JOINTS] = {
     "left_arm_m8",
     "left_hip_yaw",
@@ -93,6 +95,10 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
         joint_ids_.push_back(joint_id);
         joint_id_to_motor_index_[joint_id] = motor.index;
     }
+
+    const auto motor_index = [this](const char* name) { return joint_id_to_motor_index_.at(kinematics_->joint_id(name)); };
+    shoulder_m8_motor_index_ = {motor_index("left_arm_m8"), motor_index("right_arm_m8")};
+    shoulder_m7_motor_index_ = {motor_index("left_arm_m8crank_plate"), motor_index("right_arm_m8crank_plate")};
 
     for (const auto& sensor : sensors_) {
         if (sensor.name == "imu_body") {
@@ -158,6 +164,8 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
             std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz");
             // Dynamixel status packet error byte (bit 7: Hardware Error Status set, e.g. overheat / overload)
             for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",err_%s", name);
+            // raw shoulder m7 servo states (pos_ / vel_ of the plate joints are the URDF angles solved from them)
+            std::fprintf(log_file_, ",m7_pos_left,m7_vel_left,m7_pos_right,m7_vel_right");
             std::fprintf(log_file_, "\n");
             std::cout << "[ArtiD1] Logging every control step to " << path << std::endl;
         }
@@ -190,7 +198,7 @@ void robot::ArtiD1::print_observation() const {
     std::printf("\n[observe] root roll %+6.2f deg  pitch %+6.2f deg  | tan (%+.3f %+.3f %+.3f) norm (%+.3f %+.3f %+.3f)\n",
                 roll, pitch, o[0], o[1], o[2], o[3], o[4], o[5]);
     std::printf("[observe] ang vel heading frame (rad/s)  x %+6.3f  y %+6.3f  z %+6.3f\n", o[6], o[7], o[8]);
-    std::printf("[observe] joint               motor(deg)  |angle| from obs tan-norm(deg)  vel(rad/s)\n");
+    std::printf("[observe] joint               URDF(deg)   |angle| from obs tan-norm(deg)  vel(rad/s)\n");
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         // joint rotation R: tan = R e_x, norm = R e_z, R e_y = norm x tan; |angle| = acos((trace - 1) / 2) must equal
         // |motor angle| (a mismatch means the observation joint order / mapping is wrong)
@@ -199,10 +207,14 @@ void robot::ArtiD1::print_observation() const {
         const double trace = r[0] + y_y + r[5];
         const double angle = std::acos(std::clamp((trace - 1.0) / 2.0, -1.0, 1.0));
         const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
-        const double motor = last_motor_status_[motor_index].position;
+        const double joint = last_joint_status_[motor_index].position;
         std::printf("[observe]   %-18s %+8.2f      %7.2f                      %+7.3f\n",
-                    kPolicyJointNames[i], motor * DEG, angle * DEG, o[OBS_JOINT_VEL + i]);
+                    kPolicyJointNames[i], joint * DEG, angle * DEG, o[OBS_JOINT_VEL + i]);
     }
+    // the plate joints above are solved from the m8 / m7 servos (ARTI_D1_shoulder.hpp)
+    std::printf("[observe] shoulder m7 servo (deg)  left %+7.2f  right %+7.2f\n",
+                last_motor_status_[shoulder_m7_motor_index_[0]].position * DEG,
+                last_motor_status_[shoulder_m7_motor_index_[1]].position * DEG);
     const double* toe = &o[OBS_TOES];
     std::printf("[observe] toes (heading frame, mm)  left (%+6.1f %+6.1f %+6.1f)  right (%+6.1f %+6.1f %+6.1f)\n",
                 toe[0] * 1000, toe[1] * 1000, toe[2] * 1000, toe[3] * 1000, toe[4] * 1000, toe[5] * 1000);
@@ -232,7 +244,7 @@ void robot::ArtiD1::write_log_row() {
         if (policy_ran) std::fprintf(log_file_, ",%.7g", previous_actions_[i]); else std::fprintf(log_file_, ",nan");
     }
     for (const char* name : kPolicyJointNames) {
-        const auto& s = last_motor_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))];
+        const auto& s = last_joint_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))];
         std::fprintf(log_file_, ",%.7g,%.7g,%.5g,%.0f", s.position, s.velocity, s.torque, s.temperature);
     }
     for (const double v : last_imu_orientation_) std::fprintf(log_file_, ",%.8g", v);
@@ -240,7 +252,41 @@ void robot::ArtiD1::write_log_row() {
     for (const char* name : kPolicyJointNames) {
         std::fprintf(log_file_, ",%d", last_motor_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))].error);
     }
+    for (const uint8_t m7 : shoulder_m7_motor_index_) {
+        std::fprintf(log_file_, ",%.7g,%.7g", last_motor_status_[m7].position, last_motor_status_[m7].velocity);
+    }
     std::fprintf(log_file_, "\n");
+}
+
+void robot::ArtiD1::joint_status(const motor_interface::motor_state_t* motor_status,
+                                 motor_interface::motor_state_t* joint_status) const {
+    std::copy(motor_status, motor_status + NUM_JOINTS, joint_status);
+    // the plate joint is passive on the real robot: solve it from the m8 / m7 servos (torque / temperature / error
+    // stay the m7 servo's)
+    for (std::size_t s = 0; s < 2; ++s) {
+        const auto side = static_cast<arti_d1_shoulder::Side>(s);
+        const auto& m8 = motor_status[shoulder_m8_motor_index_[s]];
+        const auto& m7 = motor_status[shoulder_m7_motor_index_[s]];
+        auto& plate = joint_status[shoulder_m7_motor_index_[s]];
+        plate.position = arti_d1_shoulder::plate_from(side, m8.position, m7.position);
+        plate.velocity = arti_d1_shoulder::plate_velocity(side, m8.position, plate.position, m8.velocity, m7.velocity);
+    }
+}
+
+void robot::ArtiD1::set_motor_positions(const double* joint_positions) {
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        motor_command_[joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]))].position = joint_positions[i];
+    }
+    // the plate motor index drives m7: m7 from the (URDF-limited) m8 / plate targets
+    for (std::size_t s = 0; s < 2; ++s) {
+        const auto side = static_cast<arti_d1_shoulder::Side>(s);
+        const double m8 = std::clamp(motor_command_[shoulder_m8_motor_index_[s]].position,
+                                     arti_d1_shoulder::M8_MIN, arti_d1_shoulder::M8_MAX);
+        auto& m7 = motor_command_[shoulder_m7_motor_index_[s]].position;
+        const double plate = std::clamp(m7, arti_d1_shoulder::PLATE_MIN, arti_d1_shoulder::PLATE_MAX);
+        m7 = arti_d1_shoulder::m7_from(side, m8, plate, shoulder_m7_command_[s]);
+        shoulder_m7_command_[s] = m7;
+    }
 }
 
 void robot::ArtiD1::initialize() {
@@ -256,24 +302,34 @@ void robot::ArtiD1::initialize() {
     }
 
     motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
+    motor_interface::motor_state_t joint_now[NUM_JOINTS]{};
     motor_manager_->read(motor_status);
+    joint_status(motor_status, joint_now);
+    for (std::size_t s = 0; s < 2; ++s) shoulder_m7_command_[s] = motor_status[shoulder_m7_motor_index_[s]].position;
+    // interpolate in URDF joint space (policy order), so the shoulder 5-bar stays inside the URDF limits on the way
     std::array<double, NUM_JOINTS> start{};
     std::array<double, NUM_JOINTS> goal{};
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
-        start[motor_index] = motor_status[motor_index].position;
-        goal[motor_index] = default_pose_[i];
+        start[i] = joint_now[motor_index].position;
+        goal[i] = default_pose_[i];
         std::cout << "[ArtiD1::initialize] " << kPolicyJointNames[i] << " (motor index " << static_cast<int>(motor_index)
-                  << ") at " << start[motor_index] << " rad -> default pose " << goal[motor_index] << " rad" << std::endl;
+                  << ") at " << start[i] << " rad -> default pose " << goal[i] << " rad" << std::endl;
     }
+    for (std::size_t s = 0; s < 2; ++s) {
+        std::cout << "[ArtiD1::initialize] " << (s == 0 ? "left" : "right") << " shoulder m7 servo at "
+                  << motor_status[shoulder_m7_motor_index_[s]].position << " rad" << std::endl;
+    }
+    std::array<double, NUM_JOINTS> pose{};
     const auto begin = std::chrono::steady_clock::now();
     const double duration = std::chrono::duration<double>(STAND_UP_TIME).count();
     auto next_wakeup = begin;
     while (true) {
         const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
         const double alpha = std::min(1.0, t / duration);
+        for (std::size_t i = 0; i < NUM_JOINTS; ++i) pose[i] = start[i] + (goal[i] - start[i]) * alpha;
+        set_motor_positions(pose.data());
         for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
-            motor_command_[i].position = start[i] + (goal[i] - start[i]) * alpha;
             motor_command_[i].kp = policy_kp_[i];
             motor_command_[i].kd = policy_kd_[i];
         }
@@ -293,13 +349,14 @@ void robot::ArtiD1::observation() {
     motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
     motor_manager_->read(motor_status);
     std::copy(motor_status, motor_status + NUM_JOINTS, last_motor_status_);
+    joint_status(motor_status, last_joint_status_);
 
-    // update kinematics with current motor positions
+    // update kinematics with the current URDF joint positions (shoulder plates solved from m8 / m7)
     Eigen::VectorXd joint_positions = Eigen::VectorXd::Zero(NUM_JOINTS);
 
     for (const auto& joint_id : joint_ids_) {
         const int joint_index = kinematics_->joint_index(joint_id);
-        joint_positions[joint_index] = motor_status[joint_id_to_motor_index_.at(joint_id)].position;
+        joint_positions[joint_index] = last_joint_status_[joint_id_to_motor_index_.at(joint_id)].position;
     }
 
     kinematics_->update(joint_positions);
@@ -365,7 +422,7 @@ void robot::ArtiD1::observation() {
     // joint velocities [93:107], policy order
     for (const char* name : kPolicyJointNames) {
         const auto joint_id = kinematics_->joint_id(name);
-        observation_.push_back(motor_status[joint_id_to_motor_index_.at(joint_id)].velocity);
+        observation_.push_back(last_joint_status_[joint_id_to_motor_index_.at(joint_id)].velocity);
     }
 
     // foot (sole centre) positions [107:113]
@@ -429,14 +486,15 @@ void robot::ArtiD1::control() {
     }
     if (!observation_.empty()) {
         // action_ = q_des (rad, policy order): default pose + scaled action + nominal gait at the next clock
-        // phase, clamped to the training (URDF) joint limits.
+        // phase, clamped to the training (URDF) joint limits. The shoulder plate targets become m7 servo goals.
         controller_->update(observation_, action_);
+        if (action_.size() != NUM_JOINTS) {
+            throw std::runtime_error("[ArtiD1::control] The ONNX model has no 14-joint 'q_des' output.");
+        }
+        set_motor_positions(action_.data());
         for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
-            const auto joint_id = kinematics_->joint_id(kPolicyJointNames[i]);
-            const auto motor_index = joint_id_to_motor_index_.at(joint_id);
-            motor_command_[motor_index].position = action_[i];
-            motor_command_[motor_index].kp = policy_kp_[motor_index];
-            motor_command_[motor_index].kd = policy_kd_[motor_index];
+            motor_command_[i].kp = policy_kp_[i];
+            motor_command_[i].kd = policy_kd_[i];
         }
 
         const auto& actions = amp_controller_->policy_actions();

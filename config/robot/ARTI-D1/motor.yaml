@@ -8,6 +8,10 @@
 #   axis / zero_offset are assembly dependent: check every joint with `ARTI-D1 ... --observe` (the printed motor angle
 #   must follow the URDF axis sign and read the default pose when the robot is in it) before enabling the policy.
 # min / max: the URDF joint limits (= the training sim limits); goal positions are clamped to them.
+# Shoulders: IDs 5 / 7 are the real m7 servos of the 2-DoF 5-bar (the URDF opens it into serial m8 + m8crank_plate
+#   joints). ARTI_D1 converts the policy m8crank_plate target to an m7 goal and the m7 reading back to the plate angle
+#   (robot/src/robots/ARTI_D1_shoulder.cpp = shoulder_ik.py), so their zero_offset / axis / min / max are m7 ones:
+#   m7 = 0 at the CAD pose (m8 = plate = 0), sign about the Fusion m7 axis.
 masters:
   - id: 0
     period: 10000 # microseconds; 14 status packets at 1 Mbps need ~5 ms with Return Delay Time 0
@@ -55,15 +59,15 @@ masters:
         min: -0.523599
         max: 0.523599
 
-      - id: 5    # left_arm_m8crank_plate (XM430-W350)
+      - id: 5    # left shoulder m7 (XM430-W350); policy joint left_arm_m8crank_plate via ARTI_D1_shoulder
         gear_ratio: 1.0
         axis: 1
         zero_offset: 3.14159265
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
-        min: -0.226893
-        max: 1.169371
+        min: -0.349066   # real m7 limits (shoulder_ik.py M7_LIMITS: -20 / 75 deg)
+        max: 1.308997
 
       - id: 6    # left_hip_roll (XH540-W270)
         gear_ratio: 1.0
@@ -75,15 +79,15 @@ masters:
         min: -0.314159
         max: 0.209440
 
-      - id: 7    # right_arm_m8crank_plate (XM430-W350)
+      - id: 7    # right shoulder m7 (XM430-W350); policy joint right_arm_m8crank_plate via ARTI_D1_shoulder
         gear_ratio: 1.0
         axis: 1
         zero_offset: 3.14159265
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
-        min: -0.226893
-        max: 1.169371
+        min: -1.308997   # real m7 limits (shoulder_ik.py M7_LIMITS: -75 / 20 deg)
+        max: 0.349066
 
       - id: 8    # right_hip_roll (XH540-W270)
         gear_ratio: 1.0

@@ -93,7 +93,23 @@ private:
 
     std::chrono::steady_clock::time_point log_start_{};
 
-    motor_interface::motor_state_t last_motor_status_[14]{};
+    // Shoulders (ARTI_D1_shoulder.hpp): the motor ID of {side}_arm_m8crank_plate drives the real m7 servo, so its
+    // command / state goes through the 5-bar mapping. Motor indices of m8 and m7 per side (0 left, 1 right).
+    std::array<uint8_t, 2> shoulder_m8_motor_index_{};
+
+    std::array<uint8_t, 2> shoulder_m7_motor_index_{};
+
+    std::array<double, 2> shoulder_m7_command_{};   // last m7 goal (rad), picks the loop branch of the next one
+
+    motor_interface::motor_state_t last_motor_status_[14]{};   // raw motor states (m7 on the plate motor indices)
+
+    motor_interface::motor_state_t last_joint_status_[14]{};   // URDF joint states, motor index order
+
+    // Raw motor states -> URDF joint states (the plate joints solved from m8 / m7), motor index order.
+    void joint_status(const motor_interface::motor_state_t* motor_status, motor_interface::motor_state_t* joint_status) const;
+
+    // URDF joint targets (policy order) -> motor goal positions (m7 from m8 / plate), motor index order.
+    void set_motor_positions(const double* joint_positions);
 
     std::array<double, 4> last_imu_orientation_{};   // w, x, y, z (sensor to world)
 
