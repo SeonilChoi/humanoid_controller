@@ -139,4 +139,4 @@ tests:
   #- {type: sweep, joint: right_ankle_roll, amplitude: 0.15, speeds: [0.2, 0.5, 1.0, 2.0, 4.0], cycles: 3}
 
   # ---- whole legs: open-loop replay of the reference walk (only after every joint passed 'check') ----
-  - {type: replay, file: ../config/292.yaml}
+  - {type: replay, file: ../config/motions/292.yaml}
