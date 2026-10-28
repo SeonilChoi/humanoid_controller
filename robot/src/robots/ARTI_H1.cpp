@@ -185,7 +185,7 @@ void robot::ArtiH1::print_observation() const {
     std::printf("\n[observe] root roll %+6.2f deg  pitch %+6.2f deg  | tan (%+.3f %+.3f %+.3f) norm (%+.3f %+.3f %+.3f)\n",
                 roll, pitch, o[0], o[1], o[2], o[3], o[4], o[5]);
     std::printf("[observe] ang vel heading frame (rad/s)  x %+6.3f  y %+6.3f  z %+6.3f\n", o[6], o[7], o[8]);
-    std::printf("[observe] joint               motor(deg)  |angle| from obs tan-norm(deg)  vel(rad/s)\n");
+    std::printf("[observe] joint               motor(deg)  |angle| from obs tan-norm(deg)  tan (x y z)              norm (x y z)              vel(rad/s)  prev action\n");
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         // joint rotation R: tan = R e_x, norm = R e_z, R e_y = norm x tan; |angle| = acos((trace - 1) / 2) must equal
         // |motor angle| (a mismatch means the observation joint order / mapping is wrong)
@@ -195,8 +195,9 @@ void robot::ArtiH1::print_observation() const {
         const double angle = std::acos(std::clamp((trace - 1.0) / 2.0, -1.0, 1.0));
         const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
         const double motor = last_motor_status_[motor_index].position;
-        std::printf("[observe]   %-18s %+8.2f      %7.2f                      %+7.3f\n",
-                    kPolicyJointNames[i], motor * DEG, angle * DEG, o[81 + i]);
+        std::printf("[observe]   %-18s %+8.2f      %7.2f                      (%+.3f %+.3f %+.3f)  (%+.3f %+.3f %+.3f)  %+7.3f     %+.3f\n",
+                    kPolicyJointNames[i], motor * DEG, angle * DEG, r[0], r[1], r[2], r[3], r[4], r[5], o[81 + i],
+                    o[99 + i]);
     }
     std::printf("[observe] toes (heading frame, mm)  left (%+6.1f %+6.1f %+6.1f)  right (%+6.1f %+6.1f %+6.1f)\n",
                 o[93] * 1000, o[94] * 1000, o[95] * 1000, o[96] * 1000, o[97] * 1000, o[98] * 1000);
