@@ -66,6 +66,8 @@ public:
 
     void read(sensor_interface::imu_data_t& data) override;
 
+    bool no_rotation_update(uint16_t seconds) override;
+
 private:
     XsensCallback callback_;
 

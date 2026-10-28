@@ -16,6 +16,9 @@ public:
 
     virtual void read(imu_data_t& data) = 0;
 
+    // Gyro bias estimation while the sensor is held still for 'seconds'; false if the sensor has no such update.
+    virtual bool no_rotation_update(uint16_t seconds) { (void)seconds; return false; }
+
 protected:
     const std::string device_;
 

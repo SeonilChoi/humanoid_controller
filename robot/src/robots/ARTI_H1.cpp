@@ -125,6 +125,7 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     control_dt_ = policy["control_dt"].as<double>();
     if (policy["initial_gait_phase"]) initial_gait_phase_ = policy["initial_gait_phase"].as<double>();
     if (policy["max_tilt"]) max_tilt_ = policy["max_tilt"].as<double>();
+    if (policy["imu_still_time"]) imu_still_time_ = policy["imu_still_time"].as<double>();
     if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
     if (policy["stand_command_threshold"]) stand_command_threshold_ = policy["stand_command_threshold"].as<double>();
     if (policy["stick_deadzone"]) stick_deadzone_ = policy["stick_deadzone"].as<double>();
@@ -147,7 +148,7 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
             for (const char* name : kPolicyJointNames) {
                 std::fprintf(log_file_, ",pos_%s,vel_%s,tau_%s,temp_%s", name, name, name, name);
             }
-            std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz");
+            std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz,imu_ax,imu_ay,imu_az,imu_temp");
             // motor error code (Unitree: 1 overheat, 2 overcurrent, 3 overvoltage, 4 encoder fault)
             for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",err_%s", name);
             std::fprintf(log_file_, "\n");
@@ -231,6 +232,8 @@ void robot::ArtiH1::write_log_row() {
     }
     for (const double v : last_imu_orientation_) std::fprintf(log_file_, ",%.8g", v);
     for (const double v : last_imu_angular_velocity_) std::fprintf(log_file_, ",%.7g", v);
+    for (const double v : last_imu_linear_acceleration_) std::fprintf(log_file_, ",%.7g", v);
+    std::fprintf(log_file_, ",%.2f", last_imu_temperature_);
     for (const char* name : kPolicyJointNames) {
         std::fprintf(log_file_, ",%d", last_motor_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))].error);
     }
@@ -274,6 +277,29 @@ void robot::ArtiH1::initialize() {
         if (alpha >= 1.0) break;
         next_wakeup += HOMING_PERIOD;
         std::this_thread::sleep_until(next_wakeup);
+    }
+
+    // 10-28 run35 logs: with the joints locked the MTi-3 roll / pitch drifted 2-3 deg/min against the leg FK. Hold the
+    // default pose still while the MTi-3 re-estimates its gyro bias (no-rotation update) before the policy starts.
+    if (imu_still_time_ > 0.0) {
+        auto& imu = sensor_manager_->sensor<sensor_interface::Imu>(imu_sensor_index_);
+        const auto seconds = static_cast<uint16_t>(std::lround(imu_still_time_));
+        if (!imu.no_rotation_update(seconds)) {
+            std::cerr << "[ArtiH1::initialize] IMU no-rotation update not available, skipped." << std::endl;
+        } else {
+            std::cout << "[ArtiH1::initialize] IMU no-rotation update: keep the robot still for " << seconds
+                      << " s ..." << std::endl;
+            // the MTi needs a little longer than the requested duration to finish the update
+            std::this_thread::sleep_for(std::chrono::seconds(seconds) + std::chrono::milliseconds(500));
+            sensor_interface::imu_data_t imu_data{};
+            imu.read(imu_data);
+            const Eigen::Quaterniond q(imu_data.orientation[0], imu_data.orientation[1], imu_data.orientation[2],
+                                       imu_data.orientation[3]);
+            const Eigen::Vector3d g = q.normalized().toRotationMatrix().transpose() * Eigen::Vector3d::UnitZ();
+            std::printf("[ArtiH1::initialize] IMU done: roll %+.2f deg  pitch %+.2f deg  temp %.1f C\n",
+                        std::atan2(g.y(), g.z()) * 180.0 / PI, -std::asin(std::clamp(g.x(), -1.0, 1.0)) * 180.0 / PI,
+                        imu_data.temperature);
+        }
     }
     gait_phase_ = initial_gait_phase_;
     previous_actions_.fill(0.0);
@@ -435,6 +461,8 @@ void robot::ArtiH1::observation() {
     sensor_manager_->sensor<sensor_interface::Imu>(imu_sensor_index_).read(imu_data);
     for (std::size_t i = 0; i < 4; ++i) last_imu_orientation_[i] = imu_data.orientation[i];
     for (std::size_t i = 0; i < 3; ++i) last_imu_angular_velocity_[i] = imu_data.angular_velocity[i];
+    for (std::size_t i = 0; i < 3; ++i) last_imu_linear_acceleration_[i] = imu_data.linear_acceleration[i];
+    last_imu_temperature_ = imu_data.temperature;
 
     Eigen::Quaterniond world_q_imu(
         imu_data.orientation[0],

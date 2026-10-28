@@ -84,6 +84,7 @@ void imu::XsensMti::initialize() {
     output_config.push_back(XsOutputConfiguration(XDI_Quaternion, kMaxFrequency));
     output_config.push_back(XsOutputConfiguration(XDI_RateOfTurn, kMaxFrequency));
     output_config.push_back(XsOutputConfiguration(XDI_Acceleration, kMaxFrequency));
+    output_config.push_back(XsOutputConfiguration(XDI_Temperature, kMaxFrequency));
 
     if (!device_handle_->setOutputConfiguration(output_config)) {
         device_handle_ = nullptr;
@@ -162,6 +163,12 @@ void imu::XsensMti::update() {
 void imu::XsensMti::read(sensor_interface::imu_data_t& data) {
     std::lock_guard<std::mutex> lock(mutex_);
     data = data_;
+}
+
+bool imu::XsensMti::no_rotation_update(uint16_t seconds) {
+    if (!initialized_ || device_handle_ == nullptr) return false;
+
+    return device_handle_->setNoRotation(seconds);
 }
 
 void imu::XsensMti::shutdown() {

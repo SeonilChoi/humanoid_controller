@@ -76,6 +76,8 @@ private:
 
     double max_tilt_{0.7};
 
+    double imu_still_time_{0.0};              // s: hold the default pose for an IMU gyro bias update; 0 = off
+
     // Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to
     // the next rest phase (mid double support) and stops there; empty = the clock always runs.
     std::vector<double> gait_rest_phases_;
@@ -99,6 +101,10 @@ private:
     std::array<double, 4> last_imu_orientation_{};   // w, x, y, z (sensor to world)
 
     std::array<double, 3> last_imu_angular_velocity_{};
+
+    std::array<double, 3> last_imu_linear_acceleration_{};   // sensor frame, m/s^2 (gravity included)
+
+    double last_imu_temperature_{0.0};
 
     void write_log_row();
 
