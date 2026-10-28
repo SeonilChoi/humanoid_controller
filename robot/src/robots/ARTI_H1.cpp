@@ -126,6 +126,8 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     if (policy["initial_gait_phase"]) initial_gait_phase_ = policy["initial_gait_phase"].as<double>();
     if (policy["max_tilt"]) max_tilt_ = policy["max_tilt"].as<double>();
     if (policy["imu_still_time"]) imu_still_time_ = policy["imu_still_time"].as<double>();
+    if (policy["imu_converge_tolerance"]) imu_converge_tolerance_ = policy["imu_converge_tolerance"].as<double>();
+    if (policy["imu_converge_timeout"]) imu_converge_timeout_ = policy["imu_converge_timeout"].as<double>();
     if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
     if (policy["stand_command_threshold"]) stand_command_threshold_ = policy["stand_command_threshold"].as<double>();
     if (policy["stick_deadzone"]) stick_deadzone_ = policy["stick_deadzone"].as<double>();
@@ -279,27 +281,66 @@ void robot::ArtiH1::initialize() {
         std::this_thread::sleep_until(next_wakeup);
     }
 
-    // 10-28 run35 logs: with the joints locked the MTi-3 roll / pitch drifted 2-3 deg/min against the leg FK. Hold the
-    // default pose still while the MTi-3 re-estimates its gyro bias (no-rotation update) before the policy starts.
+    // 10-28 15:19 observe log (joints still to 0.01 deg): the MTi-3 roll / pitch started 3-4 deg away from the
+    // accelerometer tilt and took ~80 s to converge onto it, and the gyro read a constant bias of up to 1 deg/s
+    // (training randomizes +-0.57 deg/s). Hold the default pose still: average the gyro bias (subtracted in
+    // observation()), then wait until the IMU attitude agrees with the accelerometer before the policy starts.
     if (imu_still_time_ > 0.0) {
         auto& imu = sensor_manager_->sensor<sensor_interface::Imu>(imu_sensor_index_);
-        const auto seconds = static_cast<uint16_t>(std::lround(imu_still_time_));
-        if (!imu.no_rotation_update(seconds)) {
-            std::cerr << "[ArtiH1::initialize] IMU no-rotation update not available, skipped." << std::endl;
-        } else {
-            std::cout << "[ArtiH1::initialize] IMU no-rotation update: keep the robot still for " << seconds
-                      << " s ..." << std::endl;
-            // the MTi needs a little longer than the requested duration to finish the update
-            std::this_thread::sleep_for(std::chrono::seconds(seconds) + std::chrono::milliseconds(500));
-            sensor_interface::imu_data_t imu_data{};
-            imu.read(imu_data);
-            const Eigen::Quaterniond q(imu_data.orientation[0], imu_data.orientation[1], imu_data.orientation[2],
-                                       imu_data.orientation[3]);
+        imu.no_rotation_update(static_cast<uint16_t>(std::lround(imu_still_time_)));
+        std::cout << "[ArtiH1::initialize] IMU calibration: keep the robot still ..." << std::endl;
+
+        const auto tilt = [](const sensor_interface::imu_data_t& d, double& qr, double& qp, double& ar, double& ap) {
+            const Eigen::Quaterniond q(d.orientation[0], d.orientation[1], d.orientation[2], d.orientation[3]);
             const Eigen::Vector3d g = q.normalized().toRotationMatrix().transpose() * Eigen::Vector3d::UnitZ();
-            std::printf("[ArtiH1::initialize] IMU done: roll %+.2f deg  pitch %+.2f deg  temp %.1f C\n",
-                        std::atan2(g.y(), g.z()) * 180.0 / PI, -std::asin(std::clamp(g.x(), -1.0, 1.0)) * 180.0 / PI,
-                        imu_data.temperature);
+            qr = std::atan2(g.y(), g.z()) * 180.0 / PI;
+            qp = -std::asin(std::clamp(g.x(), -1.0, 1.0)) * 180.0 / PI;
+            const double* a = d.linear_acceleration;
+            ar = std::atan2(a[1], a[2]) * 180.0 / PI;
+            ap = std::atan2(-a[0], std::hypot(a[1], a[2])) * 180.0 / PI;
+        };
+
+        constexpr auto kPeriod = std::chrono::milliseconds(10);
+        const auto begin = std::chrono::steady_clock::now();
+        auto next = begin;
+        std::array<double, 3> gyro_sum{};
+        std::size_t gyro_count = 0;
+        double agree_since = -1.0;
+        double last_print = 0.0;
+        while (true) {
+            next += kPeriod;
+            std::this_thread::sleep_until(next);
+            const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
+            sensor_interface::imu_data_t d{};
+            imu.read(d);
+            if (t < imu_still_time_) {
+                for (std::size_t i = 0; i < 3; ++i) gyro_sum[i] += d.angular_velocity[i];
+                ++gyro_count;
+                continue;
+            }
+            double qr, qp, ar, ap;
+            tilt(d, qr, qp, ar, ap);
+            const double err = std::max(std::abs(qr - ar), std::abs(qp - ap));
+            if (err <= imu_converge_tolerance_) {
+                if (agree_since < 0.0) agree_since = t;
+            } else {
+                agree_since = -1.0;
+            }
+            if (t - last_print >= 5.0) {
+                last_print = t;
+                std::printf("[ArtiH1::initialize] %5.1f s  IMU roll %+.2f pitch %+.2f | accel roll %+.2f pitch %+.2f deg"
+                            "  (temp %.1f C)\n", t, qr, qp, ar, ap, d.temperature);
+            }
+            if (agree_since >= 0.0 && t - agree_since >= 1.0) break;
+            if (t >= imu_converge_timeout_) {
+                std::cerr << "[ArtiH1::initialize] WARNING: IMU attitude still " << err
+                          << " deg away from the accelerometer after " << t << " s; starting anyway." << std::endl;
+                break;
+            }
         }
+        for (std::size_t i = 0; i < 3; ++i) imu_gyro_bias_[i] = gyro_count > 0 ? gyro_sum[i] / gyro_count : 0.0;
+        std::printf("[ArtiH1::initialize] IMU ready: gyro bias (%+.3f %+.3f %+.3f) deg/s removed from the observation\n",
+                    imu_gyro_bias_[0] * 180.0 / PI, imu_gyro_bias_[1] * 180.0 / PI, imu_gyro_bias_[2] * 180.0 / PI);
     }
     gait_phase_ = initial_gait_phase_;
     previous_actions_.fill(0.0);
@@ -495,9 +536,9 @@ void robot::ArtiH1::observation() {
     const Eigen::Matrix3d heading_R_root = heading_R_world * world_R_root;
 
     const Eigen::Vector3d angular_velocity_imu(
-        imu_data.angular_velocity[0],
-        imu_data.angular_velocity[1],
-        imu_data.angular_velocity[2]
+        imu_data.angular_velocity[0] - imu_gyro_bias_[0],
+        imu_data.angular_velocity[1] - imu_gyro_bias_[1],
+        imu_data.angular_velocity[2] - imu_gyro_bias_[2]
     );
 
     const Eigen::Vector3d angular_velocity_world = world_R_imu * angular_velocity_imu;

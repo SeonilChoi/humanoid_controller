@@ -65,9 +65,14 @@ policy:
   initial_gait_phase: 0.927
   # Pelvis tilt (rad) that counts as a fall: the policy stops and every joint is only damped (kp 0, motor.yaml kd).
   max_tilt: 0.7
-  # Seconds the robot holds the default pose (feet on the ground, still) after standing up while the MTi-3
-  # re-estimates its gyro bias (no-rotation update); 0 = off. 10-28 logs: IMU roll / pitch drifted 2-3 deg/min.
+  # IMU calibration after standing up (feet on the ground, keep the robot still); imu_still_time 0 = off.
+  # 10-28 15:19 observe log: the MTi-3 roll / pitch started 3-4 deg off the accelerometer tilt and needed ~80 s to
+  # converge, and the gyro had a constant bias up to 1 deg/s. The gyro bias is averaged over imu_still_time (s) and
+  # removed from the observation; then the policy waits until the IMU roll / pitch is within imu_converge_tolerance
+  # (deg) of the accelerometer tilt for 1 s, or imu_converge_timeout (s) passes.
   imu_still_time: 10
+  imu_converge_tolerance: 0.5
+  imu_converge_timeout: 180
   # Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to the
   # next rest phase and stops there. [] = the clock always runs (run34 and earlier step in place at zero command).
   # run35 (arti_h1 slow gait): gait_phase_rate 0.66667, initial_gait_phase 0.927, gait_rest_phases [0.427, 0.927].

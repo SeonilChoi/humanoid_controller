@@ -76,7 +76,13 @@ private:
 
     double max_tilt_{0.7};
 
-    double imu_still_time_{0.0};              // s: hold the default pose for an IMU gyro bias update; 0 = off
+    double imu_still_time_{0.0};              // s: hold the default pose still to average the gyro bias; 0 = off
+
+    double imu_converge_tolerance_{0.5};      // deg: IMU roll / pitch vs accelerometer tilt before the policy starts
+
+    double imu_converge_timeout_{180.0};      // s: start anyway (with a warning) after this long
+
+    std::array<double, 3> imu_gyro_bias_{};   // rad/s, sensor frame; subtracted from the gyro in observation()
 
     // Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to
     // the next rest phase (mid double support) and stops there; empty = the clock always runs.
