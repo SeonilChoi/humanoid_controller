@@ -50,10 +50,11 @@ foots:
   - name: right_foot_link
     offset: [-0.026, 0.0, -0.051]
 
-# Policy settings; must match the training env. agent.onnx = arti_h1 local L2 agent_60000 (10-28, warm start from L1
-# agent_360000 = server 06-44-49 300k + foot width penalty + strong pushes incl. roll / pitch; L2 adds pelvis CoM +-2 cm,
-# MTi-3 mount tilt +-0.05 rad + tilt random walk, sagittal pushes +-0.20 m/s). Same gait / commands / limits as run35.
-# Previous model: agent_run35_820000.onnx (set model_file to it to go back).
+# Policy settings; must match the training env. agent.onnx = arti_h1 server exp2 agent_300000 (10-28 05-38-46, L2 sim:
+# pelvis CoM +-2 cm, MTi-3 mount tilt +-0.05 rad + tilt random walk, strong pushes incl. sagittal +-0.20 m/s, task/style .3/.7).
+# Sim: forward hip_pitch L/R 18.1/16.8 deg (L2 60k 21.5/15.0), standstill falls 3/64. Same gait / commands / limits as run35.
+# Previous models (set model_file to go back): agent_L2_60000.onnx (local L2 agent_60000, walked on the robot 10-28
+# without falling, but pitch rocking ~11 deg from L/R asymmetry), agent_run35_820000.onnx.
 # Test model: agent_L4_240000.onnx = local L4 agent_240000 (L3 + hip_pitch L/R symmetry penalty -100); forward hip_pitch
 # L/R 18.5/16.3 deg in sim (L2 21.5/15.0) -> less pitch rocking expected, but weaker vs. front->back pushes. Set model_file to it to try.
 # run35 agent_820000 notes: slow careful gait (arti_h1
