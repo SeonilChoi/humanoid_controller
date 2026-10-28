@@ -10,6 +10,7 @@
 
 #include "robot/core/robot.hpp"
 #include "robot/controllers/amp_controller.hpp"
+#include "sensor/core/sensor_interface.hpp"
 
 namespace robot {
 
@@ -83,6 +84,18 @@ private:
     double imu_converge_timeout_{180.0};      // s: start anyway (with a warning) after this long
 
     std::array<double, 3> imu_gyro_bias_{};   // rad/s, sensor frame; subtracted from the gyro in observation()
+
+    double imu_attitude_gain_{0.0};           // 1/s: own gyro + accelerometer attitude filter; 0 = MTi orientation
+
+    Eigen::Quaterniond attitude_q_{Eigen::Quaterniond::Identity()};   // sensor to world (own filter)
+
+    bool attitude_initialized_{false};
+
+    std::chrono::steady_clock::time_point attitude_time_{};
+
+    std::array<double, 4> last_attitude_{};   // w, x, y, z: the orientation the observation used
+
+    Eigen::Quaterniond update_attitude(const sensor_interface::imu_data_t& imu_data, const Eigen::Quaterniond& mti_q);
 
     // Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to
     // the next rest phase (mid double support) and stops there; empty = the clock always runs.

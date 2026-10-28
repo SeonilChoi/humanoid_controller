@@ -128,6 +128,7 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     if (policy["imu_still_time"]) imu_still_time_ = policy["imu_still_time"].as<double>();
     if (policy["imu_converge_tolerance"]) imu_converge_tolerance_ = policy["imu_converge_tolerance"].as<double>();
     if (policy["imu_converge_timeout"]) imu_converge_timeout_ = policy["imu_converge_timeout"].as<double>();
+    if (policy["imu_attitude_gain"]) imu_attitude_gain_ = policy["imu_attitude_gain"].as<double>();
     if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
     if (policy["stand_command_threshold"]) stand_command_threshold_ = policy["stand_command_threshold"].as<double>();
     if (policy["stick_deadzone"]) stick_deadzone_ = policy["stick_deadzone"].as<double>();
@@ -150,7 +151,7 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
             for (const char* name : kPolicyJointNames) {
                 std::fprintf(log_file_, ",pos_%s,vel_%s,tau_%s,temp_%s", name, name, name, name);
             }
-            std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz,imu_ax,imu_ay,imu_az,imu_temp");
+            std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz,imu_ax,imu_ay,imu_az,imu_temp,att_qw,att_qx,att_qy,att_qz");
             // motor error code (Unitree: 1 overheat, 2 overcurrent, 3 overvoltage, 4 encoder fault)
             for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",err_%s", name);
             std::fprintf(log_file_, "\n");
@@ -236,6 +237,7 @@ void robot::ArtiH1::write_log_row() {
     for (const double v : last_imu_angular_velocity_) std::fprintf(log_file_, ",%.7g", v);
     for (const double v : last_imu_linear_acceleration_) std::fprintf(log_file_, ",%.7g", v);
     std::fprintf(log_file_, ",%.2f", last_imu_temperature_);
+    for (const double v : last_attitude_) std::fprintf(log_file_, ",%.8g", v);
     for (const char* name : kPolicyJointNames) {
         std::fprintf(log_file_, ",%d", last_motor_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))].error);
     }
@@ -342,6 +344,7 @@ void robot::ArtiH1::initialize() {
         std::printf("[ArtiH1::initialize] IMU ready: gyro bias (%+.3f %+.3f %+.3f) deg/s removed from the observation\n",
                     imu_gyro_bias_[0] * 180.0 / PI, imu_gyro_bias_[1] * 180.0 / PI, imu_gyro_bias_[2] * 180.0 / PI);
     }
+    attitude_initialized_ = false;
     gait_phase_ = initial_gait_phase_;
     previous_actions_.fill(0.0);
 }
@@ -479,6 +482,42 @@ void robot::ArtiH1::home(uint8_t index) {
     motor_manager_->write(motor_command_);
 }
 
+// 10-28 16:05 walking log: in every still window after walking the MTi-3 roll / pitch was 1.5-3.4 deg away from the
+// accelerometer tilt (robot standing still, so the accelerometer is the truth). Own attitude instead: integrate the
+// bias-corrected gyro and pull roll / pitch toward the accelerometer with imu_attitude_gain (1/s), trusting the
+// accelerometer less when |a| is far from g (impacts). Offline on that log (gain 0.5-1): still-window error <= 0.4 deg.
+// Starts from the MTi orientation (checked against the accelerometer in initialize()); yaw only follows the gyro,
+// which is fine because the policy only sees the heading frame.
+Eigen::Quaterniond robot::ArtiH1::update_attitude(const sensor_interface::imu_data_t& imu_data,
+                                                  const Eigen::Quaterniond& mti_q) {
+    const auto now = std::chrono::steady_clock::now();
+    if (!attitude_initialized_) {
+        attitude_q_ = mti_q;
+        attitude_time_ = now;
+        attitude_initialized_ = true;
+        return attitude_q_;
+    }
+    const double dt = std::clamp(std::chrono::duration<double>(now - attitude_time_).count(), 0.0, 0.1);
+    attitude_time_ = now;
+
+    Eigen::Vector3d omega(imu_data.angular_velocity[0] - imu_gyro_bias_[0],
+                          imu_data.angular_velocity[1] - imu_gyro_bias_[1],
+                          imu_data.angular_velocity[2] - imu_gyro_bias_[2]);
+    const Eigen::Vector3d accel(imu_data.linear_acceleration[0], imu_data.linear_acceleration[1],
+                                imu_data.linear_acceleration[2]);
+    const double accel_norm = accel.norm();
+    if (accel_norm > 1.0) {
+        // up direction in the sensor frame: estimated (from the attitude) vs measured (accelerometer)
+        const Eigen::Vector3d up = attitude_q_.toRotationMatrix().transpose() * Eigen::Vector3d::UnitZ();
+        const double trust = std::exp(-std::pow((accel_norm - 9.81) / 0.5, 2));
+        omega += imu_attitude_gain_ * trust * (accel / accel_norm).cross(up);
+    }
+    const Eigen::Quaterniond omega_q(0.0, omega.x(), omega.y(), omega.z());
+    attitude_q_.coeffs() += 0.5 * dt * (attitude_q_ * omega_q).coeffs();
+    attitude_q_.normalize();
+    return attitude_q_;
+}
+
 void robot::ArtiH1::observation() {
     observation_.clear();
     observation_.reserve(OBSERVATION_SIZE);
@@ -515,6 +554,8 @@ void robot::ArtiH1::observation() {
         throw std::runtime_error("[ArtiH1::observation] Invalid IMU orientation.");
     }
     world_q_imu.normalize();
+    if (imu_attitude_gain_ > 0.0) world_q_imu = update_attitude(imu_data, world_q_imu);
+    last_attitude_ = {world_q_imu.w(), world_q_imu.x(), world_q_imu.y(), world_q_imu.z()};
 
     const Eigen::Matrix3d world_R_imu = world_q_imu.toRotationMatrix();
 

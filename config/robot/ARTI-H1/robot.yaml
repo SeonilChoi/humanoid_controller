@@ -77,6 +77,10 @@ policy:
   imu_still_time: 10
   imu_converge_tolerance: 0.5
   imu_converge_timeout: 180
+  # Attitude used by the policy: 0 = MTi-3 orientation output; > 0 = own filter (bias-corrected gyro + accelerometer,
+  # gain in 1/s). 10-28 16:05 walking log: after walking the MTi roll / pitch sat 1.5-3.4 deg off the accelerometer
+  # while standing still; the filter at 0.5 kept it within 0.4 deg (offline). Logged as att_q*.
+  imu_attitude_gain: 0.5
   # Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to the
   # next rest phase and stops there. [] = the clock always runs (run34 and earlier step in place at zero command).
   # run35 (arti_h1 slow gait): gait_phase_rate 0.66667, initial_gait_phase 0.927, gait_rest_phases [0.427, 0.927].
