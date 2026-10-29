@@ -557,8 +557,7 @@ void robot::ArtiH1::observation() {
         imu_sample_time_ = now;
     } else if (imu_stale_time_ > 0.0 &&
                std::chrono::duration<double>(now - imu_sample_time_).count() > imu_stale_time_) {
-        throw std::runtime_error("[ArtiH1::observation] IMU data stopped changing for " +
-                                 std::to_string(imu_stale_time_) + " s (MTi-3 disconnected?).");
+        imu_stale_ = true;
     }
 
     Eigen::Quaterniond world_q_imu(
@@ -591,7 +590,13 @@ void robot::ArtiH1::observation() {
         Eigen::Vector3d::UnitZ()
     ).toRotationMatrix();
 
-    const Eigen::Matrix3d heading_R_root = heading_R_world * world_R_root;
+    const Eigen::Matrix3d true_heading_R_root = heading_R_world * world_R_root;
+    true_tilt_cos_ = true_heading_R_root(2, 2);
+    if (blind_imu_ && !blind_latched_) {
+        blind_heading_R_root_ = true_heading_R_root;
+        blind_latched_ = true;
+    }
+    const Eigen::Matrix3d& heading_R_root = blind_imu_ ? blind_heading_R_root_ : true_heading_R_root;
 
     const Eigen::Vector3d angular_velocity_imu(
         imu_data.angular_velocity[0] - imu_gyro_bias_[0],
@@ -601,7 +606,8 @@ void robot::ArtiH1::observation() {
 
     const Eigen::Vector3d angular_velocity_world = world_R_imu * angular_velocity_imu;
 
-    const Eigen::Vector3d angular_velocity_heading = heading_R_world * angular_velocity_world;
+    const Eigen::Vector3d angular_velocity_heading =
+        blind_imu_ ? Eigen::Vector3d(Eigen::Vector3d::Zero()) : Eigen::Vector3d(heading_R_world * angular_velocity_world);
 
     // heading rotation [0:6]
     append_rotation(heading_R_root, observation_);
@@ -672,9 +678,13 @@ void robot::ArtiH1::control() {
     if (!motor_manager_->is_running()) {
         safe_stop("Motor communication stopped (see the [MotorManager::run] message above).");
     }
-    // observation_[5] = z of the pelvis z axis in the heading frame = cos(tilt)
-    if (!observation_.empty() && observation_[5] < std::cos(max_tilt_)) {
-        safe_stop("Pelvis tilt " + std::to_string(std::acos(std::clamp(observation_[5], -1.0, 1.0)) * 180.0 / PI) +
+    if (imu_stale_) {
+        safe_stop("IMU data stopped changing for " + std::to_string(imu_stale_time_) +
+                  " s (MTi-3 disconnected?), joints damped.");
+    }
+    // real cos(tilt) of the pelvis (= observation_[5] unless --blind-imu)
+    if (!observation_.empty() && true_tilt_cos_ < std::cos(max_tilt_)) {
+        safe_stop("Pelvis tilt " + std::to_string(std::acos(std::clamp(true_tilt_cos_, -1.0, 1.0)) * 180.0 / PI) +
                   " deg > max_tilt: fallen, joints damped.");
     }
     if (!observation_.empty()) {

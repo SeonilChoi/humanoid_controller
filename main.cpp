@@ -15,8 +15,10 @@ void on_sigint(int) { running = 0; }
 int main(int argc, char* argv[])
 {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <config_file> [--observe]" << std::endl;
-        std::cerr << "  --observe  home, stand in the default pose and print the observation at 5 Hz (no policy)" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <config_file> [--observe | --blind-imu]" << std::endl;
+        std::cerr << "  --observe    home, stand in the default pose and print the observation at 5 Hz (no policy)" << std::endl;
+        std::cerr << "  --blind-imu  test: the policy gets the standing tilt and zero angular velocity instead of the IMU" << std::endl;
+        std::cerr << "               (the IMU is still logged and still stops the robot on a fall)" << std::endl;
         return 1;
     }
 
@@ -25,6 +27,13 @@ int main(int argc, char* argv[])
     const std::string config_file = argv[1];
 
     robot::ArtiH1 robot(config_file);
+
+    for (int i = 2; i < argc; ++i) {
+        if (std::string(argv[i]) == "--blind-imu") {
+            robot.set_blind_imu(true);
+            std::cout << "[main] --blind-imu: the policy does NOT see the IMU (tilt latched at start, angular velocity 0)." << std::endl;
+        }
+    }
 
     robot.start();
 

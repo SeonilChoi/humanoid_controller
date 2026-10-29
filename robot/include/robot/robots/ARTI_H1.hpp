@@ -33,6 +33,10 @@ public:
     // Append the last observation() to the runtime log (if robot.yaml log_file is set); used by --observe.
     void log_observation();
 
+    // Test mode (main.cpp --blind-imu): the policy gets the pelvis tilt latched at the first observation and zero
+    // angular velocity instead of the IMU; the real IMU is still logged and still used for the max_tilt fall check.
+    void set_blind_imu(bool blind) { blind_imu_ = blind; }
+
 private:
     void home(uint8_t index);
 
@@ -100,6 +104,16 @@ private:
     std::array<double, 6> imu_last_sample_{};
 
     std::chrono::steady_clock::time_point imu_sample_time_{};
+
+    bool imu_stale_{false};                   // set in observation(), control() stops on it
+
+    bool blind_imu_{false};
+
+    bool blind_latched_{false};
+
+    Eigen::Matrix3d blind_heading_R_root_{Eigen::Matrix3d::Identity()};
+
+    double true_tilt_cos_{1.0};               // z of the real pelvis z axis (max_tilt check, also when blind)
 
     Eigen::Quaterniond update_attitude(const sensor_interface::imu_data_t& imu_data, const Eigen::Quaterniond& mti_q);
 
