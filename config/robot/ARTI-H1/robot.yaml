@@ -84,6 +84,9 @@ policy:
   # gain in 1/s). 10-28 16:05 walking log: after walking the MTi roll / pitch sat 1.5-3.4 deg off the accelerometer
   # while standing still; the filter at 0.5 kept it within 0.4 deg (offline). Logged as att_q*.
   imu_attitude_gain: 0.5
+  # Stop (same as a motor communication error) when the IMU gyro / accelerometer samples stop changing for this many
+  # seconds; 0 = off. 10-29 09:44 walking log: all IMU fields froze at 71.5 s and the policy walked on blind for 90 s.
+  imu_stale_time: 0.2
   # Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to the
   # next rest phase and stops there. [] = the clock always runs (run34 and earlier step in place at zero command).
   # run35 (arti_h1 slow gait): gait_phase_rate 0.66667, initial_gait_phase 0.927, gait_rest_phases [0.427, 0.927].

@@ -129,6 +129,7 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
     if (policy["imu_converge_tolerance"]) imu_converge_tolerance_ = policy["imu_converge_tolerance"].as<double>();
     if (policy["imu_converge_timeout"]) imu_converge_timeout_ = policy["imu_converge_timeout"].as<double>();
     if (policy["imu_attitude_gain"]) imu_attitude_gain_ = policy["imu_attitude_gain"].as<double>();
+    if (policy["imu_stale_time"]) imu_stale_time_ = policy["imu_stale_time"].as<double>();
     if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
     if (policy["stand_command_threshold"]) stand_command_threshold_ = policy["stand_command_threshold"].as<double>();
     if (policy["stick_deadzone"]) stick_deadzone_ = policy["stick_deadzone"].as<double>();
@@ -345,6 +346,7 @@ void robot::ArtiH1::initialize() {
                     imu_gyro_bias_[0] * 180.0 / PI, imu_gyro_bias_[1] * 180.0 / PI, imu_gyro_bias_[2] * 180.0 / PI);
     }
     attitude_initialized_ = false;
+    imu_sample_time_ = std::chrono::steady_clock::now();
     gait_phase_ = initial_gait_phase_;
     previous_actions_.fill(0.0);
 }
@@ -543,6 +545,21 @@ void robot::ArtiH1::observation() {
     for (std::size_t i = 0; i < 3; ++i) last_imu_angular_velocity_[i] = imu_data.angular_velocity[i];
     for (std::size_t i = 0; i < 3; ++i) last_imu_linear_acceleration_[i] = imu_data.linear_acceleration[i];
     last_imu_temperature_ = imu_data.temperature;
+
+    // 10-29 09:44 walking log: every IMU field froze at 71.5 s (no more MTi packets) and the policy walked on the
+    // stale attitude for 90 s. Real samples never repeat exactly at 60 Hz, so a sample that stops changing = IMU lost.
+    const std::array<double, 6> imu_sample{imu_data.angular_velocity[0], imu_data.angular_velocity[1],
+                                           imu_data.angular_velocity[2], imu_data.linear_acceleration[0],
+                                           imu_data.linear_acceleration[1], imu_data.linear_acceleration[2]};
+    const auto now = std::chrono::steady_clock::now();
+    if (imu_sample != imu_last_sample_) {
+        imu_last_sample_ = imu_sample;
+        imu_sample_time_ = now;
+    } else if (imu_stale_time_ > 0.0 &&
+               std::chrono::duration<double>(now - imu_sample_time_).count() > imu_stale_time_) {
+        throw std::runtime_error("[ArtiH1::observation] IMU data stopped changing for " +
+                                 std::to_string(imu_stale_time_) + " s (MTi-3 disconnected?).");
+    }
 
     Eigen::Quaterniond world_q_imu(
         imu_data.orientation[0],

@@ -95,6 +95,12 @@ private:
 
     std::array<double, 4> last_attitude_{};   // w, x, y, z: the orientation the observation used
 
+    double imu_stale_time_{0.2};              // s: stop when the IMU gyro / accelerometer samples stop changing this long
+
+    std::array<double, 6> imu_last_sample_{};
+
+    std::chrono::steady_clock::time_point imu_sample_time_{};
+
     Eigen::Quaterniond update_attitude(const sensor_interface::imu_data_t& imu_data, const Eigen::Quaterniond& mti_q);
 
     // Standing (training cfg gait_rest_phases / stand_command_threshold): under a zero command the clock runs on to
