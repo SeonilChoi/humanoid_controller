@@ -50,11 +50,18 @@ foots:
   - name: right_foot_link
     offset: [-0.026, 0.0, -0.051]
 
-# Policy settings; must match the training env. agent.onnx = arti_h1 server exp2 agent_300000 (10-28 05-38-46, L2 sim:
-# pelvis CoM +-2 cm, MTi-3 mount tilt +-0.05 rad + tilt random walk, strong pushes incl. sagittal +-0.20 m/s, task/style .3/.7).
-# Sim: forward hip_pitch L/R 18.1/16.8 deg (L2 60k 21.5/15.0), standstill falls 3/64. Same gait / commands / limits as run35.
-# Previous models (set model_file to go back): agent_L2_60000.onnx (local L2 agent_60000, walked on the robot 10-28
-# without falling, but pitch rocking ~11 deg from L/R asymmetry), agent_run35_820000.onnx.
+# Policy settings; must match the training env. agent.onnx (= agent_s2r_340000.onnx) = ARTI-H1_IsaacLab branch server,
+# Isaac Lab 3.x / PhysX, AMP stage 3 Template-Arti-H1-Amp-Sim2Real-Direct-v0 agent_340000 (11-02): stage 1 fresh 1365k ->
+# stage 2 fine-tune 305k (walk at the commanded speed) -> stage 3 340k with the real joint lag randomised per env
+# (hip_roll +0-50 ms, ankle_pitch +0-25 ms on top of the identified delay). Same obs / gait / commands / limits as run35
+# and exp2, so no other setting here changes. Sim (PhysX, no balance support):
+#   real-like lag (hip_roll 65, ankle_pitch 35 ms): roll-rate rms 14.1 deg/s, power 7.6 W, 0 falls / 64 env x 25 s
+#   (stage 2 305k without lag training: 30.9 deg/s, 12.4 W, 1 fall) -> less roll rocking expected on the robot;
+#   tracking fwd / back / side ~58 / 57 / 70 % of the command (exp2 300k ~33 % forward), sole distance 119 mm,
+#   standing push front->back 0.30 m/s 7/16 falls (does not step yet); check_onnx IMU tilt 0.05 rad: 2/64 (exp2 1/64).
+# Previous models (set model_file to go back): agent_exp2_300000.onnx (server exp2 agent_300000, robot default until
+# 11-02), agent_L2_60000.onnx (local L2 agent_60000, walked on the robot 10-28 without falling, but pitch rocking
+# ~11 deg from L/R asymmetry), agent_run35_820000.onnx.
 # Test model: agent_L4_240000.onnx = local L4 agent_240000 (L3 + hip_pitch L/R symmetry penalty -100); forward hip_pitch
 # L/R 18.5/16.3 deg in sim (L2 21.5/15.0) -> less pitch rocking expected, but weaker vs. front->back pushes. Set model_file to it to try.
 # run35 agent_820000 notes: slow careful gait (arti_h1
