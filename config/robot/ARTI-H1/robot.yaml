@@ -50,15 +50,20 @@ foots:
   - name: right_foot_link
     offset: [-0.026, 0.0, -0.051]
 
-# Policy settings; must match the training env. agent.onnx (= agent_s2r_340000.onnx) = ARTI-H1_IsaacLab branch server,
-# Isaac Lab 3.x / PhysX, AMP stage 3 Template-Arti-H1-Amp-Sim2Real-Direct-v0 agent_340000 (11-02): stage 1 fresh 1365k ->
-# stage 2 fine-tune 305k (walk at the commanded speed) -> stage 3 340k with the real joint lag randomised per env
-# (hip_roll +0-50 ms, ankle_pitch +0-25 ms on top of the identified delay). Same obs / gait / commands / limits as run35
-# and exp2, so no other setting here changes. Sim (PhysX, no balance support):
-#   real-like lag (hip_roll 65, ankle_pitch 35 ms): roll-rate rms 14.1 deg/s, power 7.6 W, 0 falls / 64 env x 25 s
-#   (stage 2 305k without lag training: 30.9 deg/s, 12.4 W, 1 fall) -> less roll rocking expected on the robot;
-#   tracking fwd / back / side ~58 / 57 / 70 % of the command (exp2 300k ~33 % forward), sole distance 119 mm,
-#   standing push front->back 0.30 m/s 7/16 falls (does not step yet); check_onnx IMU tilt 0.05 rad: 2/64 (exp2 1/64).
+# Policy settings; must match the training env. agent.onnx (= agent_s2r_600000.onnx) = ARTI-H1_IsaacLab branch server,
+# Isaac Lab 3.x / PhysX, AMP stage 3 Template-Arti-H1-Amp-Sim2Real-Direct-v0 agent_600000 (11-03): stage 1 fresh 1365k ->
+# stage 2 fine-tune 305k -> stage 3 (real joint lag randomised per env: hip_roll +0-50 ms, ankle_pitch +0-25 ms;
+# sagittal pushes +-0.30 m/s) 340k -> continued to 600k. Same obs / gait / commands / limits as run35, exp2 and 340k,
+# so no other setting here changes. Sim (PhysX, no balance support), 600k vs 340k:
+#   real-like lag (hip_roll 65, ankle_pitch 35 ms): 0 / 0 falls (64 env x 25 s), + soft contact 0 / 1,
+#   + 0.05 rad joint obs offset 7 / 13; roll-rate rms 14.0 deg/s, power 7.4 W (340k 14.1, 7.6)
+#   restart from rest phase 0.427 with cmd 0.0094 (as in the 11-02 robot logs) + lag + ankle_roll -0.06 / hip_roll
+#   +0.03 rad zero errors: 2 / 18 falls of 64; sole overlap 0 % (1.7 %); standing push back->front 0.40 10/16
+#   (16/16), front->back 0.30 6/16 (7/16, still no stepping); IMU tilt 0.05 rad from standstill 0/64.
+# 11-02 robot logs with 340k: forward falls after restarting from 0.427; the stance foot rolled 12-18 deg on the
+# floor (sim 0.7) and the soles sit lifted on the inner edge at the home pose -> check the sole flatness / ankle play
+# and the roll joint homing before walking.
+# agent_s2r_340000.onnx = stage-3 agent_340000 (robot default 11-02).
 # Previous models (set model_file to go back): agent_exp2_300000.onnx (server exp2 agent_300000, robot default until
 # 11-02), agent_L2_60000.onnx (local L2 agent_60000, walked on the robot 10-28 without falling, but pitch rocking
 # ~11 deg from L/R asymmetry), agent_run35_820000.onnx.
