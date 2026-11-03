@@ -16,7 +16,8 @@ namespace robot {
 
 class ArtiH1 : public Robot {
 public:
-    explicit ArtiH1(const std::string& config_file);
+    // model_file: ONNX policy to run instead of robot.yaml model_file (main.cpp --ppo / --model); empty = robot.yaml.
+    explicit ArtiH1(const std::string& config_file, const std::string& model_file = "");
 
     virtual ~ArtiH1();
 

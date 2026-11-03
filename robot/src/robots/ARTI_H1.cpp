@@ -79,8 +79,11 @@ void append_rotation(const Eigen::Matrix3d& value, std::vector<double>& vector) 
 
 } // namespace
 
-robot::ArtiH1::ArtiH1(const std::string& config_file)
+robot::ArtiH1::ArtiH1(const std::string& config_file, const std::string& model_file)
     : robot::Robot(config_file) {
+    const bool model_override = !model_file.empty() && model_file != model_file_;
+    if (!model_file.empty()) model_file_ = model_file;
+    std::cout << "[ArtiH1] policy model: " << model_file_ << std::endl;
     if (motors_.size() != NUM_JOINTS) {
         throw std::runtime_error("[ArtiH1::ArtiH1] Invalid number of joints.");
     }
@@ -136,11 +139,18 @@ robot::ArtiH1::ArtiH1(const std::string& config_file)
 
     const YAML::Node log_file = YAML::LoadFile(config_file)["log_file"];
     if (log_file && !log_file.as<std::string>().empty()) {
-        // <log_file>_YYYYmmdd_HHMMSS.csv, so runs never overwrite each other
+        // <log_file>_YYYYmmdd_HHMMSS.csv, so runs never overwrite each other; a model picked on the command line
+        // (--ppo / --model) adds its file name: <log_file>_<model>_YYYYmmdd_HHMMSS.csv
+        std::string prefix = log_file.as<std::string>();
+        if (model_override) {
+            std::string stem = model_file_.substr(model_file_.find_last_of('/') + 1);
+            if (stem.size() > 5 && stem.compare(stem.size() - 5, 5, ".onnx") == 0) stem.resize(stem.size() - 5);
+            prefix += "_" + stem;
+        }
         char stamp[32];
         const std::time_t now = std::time(nullptr);
         std::strftime(stamp, sizeof(stamp), "_%Y%m%d_%H%M%S.csv", std::localtime(&now));
-        const std::string path = log_file.as<std::string>() + stamp;
+        const std::string path = prefix + stamp;
         log_file_ = std::fopen(path.c_str(), "w");
         if (log_file_ == nullptr) {
             std::cerr << "[ArtiH1] Cannot open log file " << path << ", logging disabled." << std::endl;

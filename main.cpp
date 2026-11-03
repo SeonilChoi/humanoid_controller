@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <yaml-cpp/yaml.h>
+
 #include "robot/robots/ARTI_H1.hpp"
 
 namespace {
@@ -14,25 +16,52 @@ void on_sigint(int) { running = 0; }
 
 int main(int argc, char* argv[])
 {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <config_file> [--observe | --blind-imu]" << std::endl;
+    const auto usage = [&]() {
+        std::cerr << "Usage: " << argv[0] << " <config_file> [--ppo | --model <file.onnx>] [--observe | --blind-imu]" << std::endl;
+        std::cerr << "  --ppo        run the RL-only (PPO) policy: robot.yaml ppo_model_file instead of model_file (AMP)" << std::endl;
+        std::cerr << "  --model F    run the ONNX policy F instead of robot.yaml model_file (same obs / q_des interface)" << std::endl;
         std::cerr << "  --observe    home, stand in the default pose and print the observation at 5 Hz (no policy)" << std::endl;
         std::cerr << "  --blind-imu  test: the policy gets the standing tilt and zero angular velocity instead of the IMU" << std::endl;
         std::cerr << "               (the IMU is still logged and still stops the robot on a fall)" << std::endl;
+    };
+    if (argc < 2) {
+        usage();
         return 1;
+    }
+
+    const std::string config_file = argv[1];
+    std::string model_file;
+    bool observe = false;
+    bool blind_imu = false;
+    for (int i = 2; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "--observe") {
+            observe = true;
+        } else if (arg == "--blind-imu") {
+            blind_imu = true;
+        } else if (arg == "--ppo") {
+            const YAML::Node ppo = YAML::LoadFile(config_file)["ppo_model_file"];
+            if (!ppo || ppo.as<std::string>().empty()) {
+                std::cerr << "[main] --ppo: " << config_file << " has no ppo_model_file." << std::endl;
+                return 1;
+            }
+            model_file = ppo.as<std::string>();
+        } else if (arg == "--model" && i + 1 < argc) {
+            model_file = argv[++i];
+        } else {
+            std::cerr << "[main] Unknown argument: " << arg << std::endl;
+            usage();
+            return 1;
+        }
     }
 
     std::signal(SIGINT, on_sigint);
 
-    const std::string config_file = argv[1];
+    robot::ArtiH1 robot(config_file, model_file);
 
-    robot::ArtiH1 robot(config_file);
-
-    for (int i = 2; i < argc; ++i) {
-        if (std::string(argv[i]) == "--blind-imu") {
-            robot.set_blind_imu(true);
-            std::cout << "[main] --blind-imu: the policy does NOT see the IMU (tilt latched at start, angular velocity 0)." << std::endl;
-        }
+    if (blind_imu) {
+        robot.set_blind_imu(true);
+        std::cout << "[main] --blind-imu: the policy does NOT see the IMU (tilt latched at start, angular velocity 0)." << std::endl;
     }
 
     robot.start();
@@ -42,7 +71,7 @@ int main(int argc, char* argv[])
 
         robot.initialize();
 
-        if (argc > 2 && std::string(argv[2]) == "--observe") {
+        if (observe) {
             // observation check only: the motors keep holding the default pose from initialize(); the observation is
             // logged at the control rate (60 Hz) and printed at 5 Hz
             constexpr auto kObservePeriod = std::chrono::microseconds(1'000'000 / 60);

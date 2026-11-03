@@ -5,6 +5,14 @@ sensor_manager_config_file: ../config/robot/ARTI-H1/sensor.yaml
 joy_handler_config_file: ../config/robot/ARTI-H1/joy.yaml
 urdf_file: ../config/robot/ARTI-H1/robot.urdf
 model_file: ../config/robot/ARTI-H1/agent.onnx
+# RL-only policy for comparison runs: ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --ppo (any other ONNX: --model <file>).
+# agent_ppo_1360000.onnx = server PPO Template-Arti-H1-Direct-v0 agent_1360000 (11-03): task rewards only, no AMP style
+# reward, stage-1 cfg (no fine-tune / sim2real stages, no extra joint lag in training). Same obs / gait / commands /
+# limits as agent.onnx, so the policy settings below are shared. Sim (PhysX, 64 env x 25 s) vs AMP 600k: nominal 0 / 0
+# falls, real-like lag 3 / 0, lag + soft contact 120 / 0, lag + 0.05 rad obs offset 18 / 7; roll-rate rms 32 / 14 deg/s,
+# power 14.7 / 7.4 W, feet cross in 3 / 32 envs, standing push front->back 0.30 15/16 / 6/16 falls -> expect a stiffer,
+# less robust gait than AMP; use the rope. The log file name gets the model name (arti_h1_run_agent_ppo_1360000_*.csv).
+ppo_model_file: ../config/robot/ARTI-H1/agent_ppo_1360000.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
 log_file: ./arti_h1_run

@@ -153,8 +153,12 @@ cd ~/humanoid_controller/build
 ### Robot
 ```bash
 cd ~/humanoid_controller/build
-./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml
+./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml                 # AMP policy (robot.yaml model_file)
+./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --ppo           # RL-only PPO policy (robot.yaml ppo_model_file)
+./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --model ../config/robot/ARTI-H1/agent_s2r_340000.onnx   # any other ONNX
 ```
+`--ppo` / `--model` combine with `--blind-imu` and `--observe`. With `--ppo` / `--model` the log file name includes
+the model name, so AMP and PPO runs stay apart.
 
 ## Troubleshooting
 
