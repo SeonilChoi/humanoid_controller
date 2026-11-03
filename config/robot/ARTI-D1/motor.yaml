@@ -13,7 +13,7 @@
 #   Operating Mode 4 (Extended Position): the goals go below pulse 0. Present Position restarts inside 0-4095 at
 #   power-on (pulse -24 reads 4072); DynamixelDriver unwraps it to the turn of the joint range and adds the turn back
 #   to the goals.
-#   axis -1 (USER): left_hip_yaw, left_ankle, right_hip_yaw, right_hip_pitch, right_knee, left m7 (ID 5), right_arm_m8.
+#   axis -1 (USER): left_ankle, right_hip_yaw, right_hip_pitch, right_knee, left m7 (ID 5), right_arm_m8.
 # min / max: the URDF joint limits (= the training sim limits); goal positions are clamped to them.
 # Shoulders: IDs 5 / 7 are the real m7 servos of the 2-DoF 5-bar (the URDF opens it into serial m8 + m8crank_plate
 #   joints). ARTI_D1 converts the policy m8crank_plate target to an m7 goal and the m7 reading back to the plate angle
@@ -38,7 +38,7 @@ masters:
 
       - id: 2    # left_hip_yaw (XH540-W270)
         gear_ratio: 1.0
-        axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
+        axis: 1    # USER 2026-11-03 (passive check): + by hand read -, so not reversed
         zero_offset: 0.00000000    # pulse 0 at the real zero
         pulse_per_revolution: 4096
         kp: 800
