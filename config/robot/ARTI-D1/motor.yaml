@@ -7,6 +7,10 @@
 # zero_offset: motor angle (rad) at the joint zero, motor / gear_ratio = joint * axis + zero_offset; pi = pulse 2048.
 #   axis / zero_offset are assembly dependent: check every joint with `ARTI-D1 ... --observe` (the printed motor angle
 #   must follow the URDF axis sign and read the default pose when the robot is in it) before enabling the policy.
+# Real zero (USER 2026-11-03): every servo reads pi (pulse 2048) with the hip link level, each leg straight and pointing
+#   backward at 90 deg to the upper body, sole perpendicular to the ground = URDF hip_roll +/-0.15, hip_pitch +0.9383,
+#   knee +1.3736, ankle -0.7411 rad (motion_generator scripts/view_real_zero.py). zero_offset = pi - axis * that angle.
+#   axis -1 (USER): left_hip_yaw, left_ankle, right_hip_yaw, right_hip_pitch, right_knee, left m7 (ID 5), right_arm_m8.
 # min / max: the URDF joint limits (= the training sim limits); goal positions are clamped to them.
 # Shoulders: IDs 5 / 7 are the real m7 servos of the 2-DoF 5-bar (the URDF opens it into serial m8 + m8crank_plate
 #   joints). ARTI_D1 converts the policy m8crank_plate target to an m7 goal and the m7 reading back to the plate angle
@@ -31,7 +35,7 @@ masters:
 
       - id: 2    # left_hip_yaw (XH540-W270)
         gear_ratio: 1.0
-        axis: 1
+        axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
         zero_offset: 3.14159265
         pulse_per_revolution: 4096
         kp: 800
@@ -41,7 +45,7 @@ masters:
 
       - id: 3    # right_arm_m8 (XM430-W350)
         gear_ratio: 1.0
-        axis: 1
+        axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
         zero_offset: 3.14159265
         pulse_per_revolution: 4096
         kp: 800
@@ -51,7 +55,7 @@ masters:
 
       - id: 4    # right_hip_yaw (XH540-W270)
         gear_ratio: 1.0
-        axis: 1
+        axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
         zero_offset: 3.14159265
         pulse_per_revolution: 4096
         kp: 800
@@ -61,7 +65,7 @@ masters:
 
       - id: 5    # left shoulder m7 (XM430-W350); policy joint left_arm_m8crank_plate via ARTI_D1_shoulder
         gear_ratio: 1.0
-        axis: 1
+        axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
         zero_offset: 3.14159265
         pulse_per_revolution: 4096
         kp: 800
@@ -72,7 +76,7 @@ masters:
       - id: 6    # left_hip_roll (XH540-W270)
         gear_ratio: 1.0
         axis: 1
-        zero_offset: 3.14159265
+        zero_offset: 2.99159265    # pi (pulse 2048) at the real zero, URDF left_hip_roll = +0.1500 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
@@ -92,7 +96,7 @@ masters:
       - id: 8    # right_hip_roll (XH540-W270)
         gear_ratio: 1.0
         axis: 1
-        zero_offset: 3.14159265
+        zero_offset: 3.29159265    # pi (pulse 2048) at the real zero, URDF right_hip_roll = -0.1500 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
@@ -102,7 +106,7 @@ masters:
       - id: 9    # left_hip_pitch (XH540-W270)
         gear_ratio: 1.0
         axis: 1
-        zero_offset: 3.14159265
+        zero_offset: 2.20330389    # pi (pulse 2048) at the real zero, URDF left_hip_pitch = +0.9383 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
@@ -111,8 +115,8 @@ masters:
 
       - id: 10    # right_hip_pitch (XH540-W270)
         gear_ratio: 1.0
-        axis: 1
-        zero_offset: 3.14159265
+        axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
+        zero_offset: 4.07988142    # pi (pulse 2048) at the real zero, URDF right_hip_pitch = +0.9383 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
@@ -122,7 +126,7 @@ masters:
       - id: 11    # left_knee (XH540-W270)
         gear_ratio: 1.0
         axis: 1
-        zero_offset: 3.14159265
+        zero_offset: 1.76801768    # pi (pulse 2048) at the real zero, URDF left_knee = +1.3736 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
@@ -131,8 +135,8 @@ masters:
 
       - id: 12    # right_knee (XH540-W270)
         gear_ratio: 1.0
-        axis: 1
-        zero_offset: 3.14159265
+        axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
+        zero_offset: 4.51516763    # pi (pulse 2048) at the real zero, URDF right_knee = +1.3736 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
@@ -141,8 +145,8 @@ masters:
 
       - id: 13    # left_ankle (XH540-W270)
         gear_ratio: 1.0
-        axis: 1
-        zero_offset: 3.14159265
+        axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
+        zero_offset: 2.40052524    # pi (pulse 2048) at the real zero, URDF left_ankle = -0.7411 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
@@ -152,7 +156,7 @@ masters:
       - id: 14    # right_ankle (XH540-W270)
         gear_ratio: 1.0
         axis: 1
-        zero_offset: 3.14159265
+        zero_offset: 3.88266007    # pi (pulse 2048) at the real zero, URDF right_ankle = -0.7411 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
