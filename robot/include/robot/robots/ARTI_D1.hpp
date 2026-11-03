@@ -58,6 +58,8 @@ private:
     std::array<double, 14> default_pose_{};   // first reference frame, policy order
     std::array<double, 14> home_pose_{};      // real servo zero (robot.yaml policy.home_pose), policy order
     bool has_home_pose_{false};
+    std::array<bool, 14> fixed_joint_{};       // robot.yaml policy.fixed_joints: hold fixed_value_, ignore q_des
+    std::array<double, 14> fixed_value_{};
 
     std::array<double, 14> policy_kp_{};      // motor.yaml kp / kd = Dynamixel Position P / D Gain, motor index order
 

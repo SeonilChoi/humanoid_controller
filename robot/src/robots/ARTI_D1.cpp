@@ -133,6 +133,23 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
         home_pose_ = read_array<NUM_JOINTS>(policy, "home_pose");
         has_home_pose_ = true;
     }
+    // policy.fixed_joints {name: rad}: these joints ignore the ONNX q_des and hold the given angle (USER 2026-11-03:
+    // arms fixed at 0). Also the start pose uses them, so nothing jumps when the policy starts.
+    if (const YAML::Node fixed = policy["fixed_joints"]) {
+        for (const auto& item : fixed) {
+            const std::string name = item.first.as<std::string>();
+            bool found = false;
+            for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+                if (name == kPolicyJointNames[i]) {
+                    fixed_joint_[i] = true;
+                    fixed_value_[i] = item.second.as<double>();
+                    found = true;
+                }
+            }
+            if (!found) throw std::runtime_error("[ArtiD1] robot.yaml policy.fixed_joints: unknown joint " + name);
+            std::cout << "[ArtiD1] " << name << " fixed at " << item.second.as<double>() << " rad (ONNX output ignored)" << std::endl;
+        }
+    }
     // Walking PD gains: motor.yaml 'kp' / 'kd' per motor (driver units, the real robot gains).
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         policy_kp_[i] = motor_manager_->gains(static_cast<uint8_t>(i)).kp;
@@ -317,7 +334,7 @@ void robot::ArtiD1::initialize() {
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
         start[i] = joint_now[motor_index].position;
-        goal[i] = default_pose_[i];
+        goal[i] = fixed_joint_[i] ? fixed_value_[i] : default_pose_[i];
         std::cout << "[ArtiD1::initialize] " << kPolicyJointNames[i] << " (motor index " << static_cast<int>(motor_index)
                   << ") at " << start[i] << " rad -> default pose " << goal[i] << " rad" << std::endl;
     }
@@ -513,6 +530,9 @@ void robot::ArtiD1::control() {
         controller_->update(observation_, action_);
         if (action_.size() != NUM_JOINTS) {
             throw std::runtime_error("[ArtiD1::control] The ONNX model has no 14-joint 'q_des' output.");
+        }
+        for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+            if (fixed_joint_[i]) action_[i] = fixed_value_[i];
         }
         set_motor_positions(action_.data());
         for (std::size_t i = 0; i < NUM_JOINTS; ++i) {

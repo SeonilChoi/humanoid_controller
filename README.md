@@ -237,7 +237,8 @@ with `python scripts/replay_demo.py --motion_set arti_d1 --index 681 --output 68
 ```
 `config/robot/ARTI-D1/agent.onnx` is the arti_d1 policy (PhysX pure-RL run B, 2.83M steps; checked in the training
 env: ONNX q_des = env target within 1e-6 rad, 16 robots x 20 s from standstill without a fall). The policy starts
-standing in place. Left stick = forward / sideways (full stick 0.043 / 0.017 m/s), right stick = turn (0.099 rad/s);
+standing in place. The arms ignore the policy and hold 0 (`robot.yaml` `policy.fixed_joints`; delete the entries
+to let the policy move them). Left stick = forward / sideways (full stick 0.043 / 0.017 m/s), right stick = turn (0.099 rad/s);
 release the sticks to stop. A pelvis tilt over 0.7 rad makes every servo limp. Each run writes
 `arti_d1_run_<time>.csv` (send it when a run misbehaves).
 Another policy: export it with `python scripts/pt_to_onnx.py --checkpoint <agent_N.pt> --output agent.onnx` in
