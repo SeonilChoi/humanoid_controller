@@ -206,7 +206,26 @@ private:
         send_packet(tx, tx_size);
     }
 
-    std::size_t make_packet(uint8_t* packet, std::size_t max_packet_size, uint8_t id, uint8_t inst, const uint8_t* data, std::size_t data_size) {
+    // Protocol 2.0 byte stuffing: inside the instruction + parameters, every FF FF FD is sent as FF FF FD FD, and
+    // the length field / CRC cover the stuffed bytes. Negative positions / velocities (zero at pulse 0, Extended
+    // Position Mode) produce FF FF FD in the data, so this is needed both ways.
+    std::size_t make_packet(uint8_t* packet, std::size_t max_packet_size, uint8_t id, uint8_t inst, const uint8_t* raw_data, std::size_t raw_size) {
+        uint8_t data[MAX_PACKET_SIZE * 2];
+        std::size_t data_size = 0;
+        uint8_t prev2 = 0x00;  // stuffing covers the instruction + parameters; the instruction is never FF
+        uint8_t prev1 = inst;
+        for (std::size_t i = 0; i < raw_size; ++i) {
+            if (data_size + 2 > sizeof(data)) throw std::runtime_error("[DynamixelMaster::make_packet] packet too large.");
+            data[data_size++] = raw_data[i];
+            if (prev2 == 0xFF && prev1 == 0xFF && raw_data[i] == 0xFD) {
+                data[data_size++] = 0xFD;
+                prev2 = 0xFD;  // the stuffed FD does not start a new FF FF FD
+                prev1 = 0xFD;
+                continue;
+            }
+            prev2 = prev1;
+            prev1 = raw_data[i];
+        }
         const uint16_t length = static_cast<uint16_t>(data_size + 3);
         const std::size_t total = 10 + data_size;
         if (total > max_packet_size) {
@@ -327,7 +346,18 @@ private:
                 throw std::runtime_error("[DynamixelMaster::receive_packet] CRC mismatch.");
             }
 
-            return wait_length;
+            // Remove the byte stuffing (FF FF FD FD -> FF FF FD) from the instruction / error / parameters (rx[7]
+            // onward, before the CRC), so the parameters sit at their fixed offsets for decode(). The CRC was checked
+            // on the stuffed bytes, as the protocol defines it.
+            std::size_t out = 7;
+            for (std::size_t in = 7; in < wait_length - 2; ++in) {
+                rx[out++] = rx[in];
+                if (out >= 10 && rx[out - 3] == 0xFF && rx[out - 2] == 0xFF && rx[out - 1] == 0xFD &&
+                    in + 1 < wait_length - 2 && rx[in + 1] == 0xFD) {
+                    ++in;  // drop the stuffed FD
+                }
+            }
+            return out;
         }
     }
 
