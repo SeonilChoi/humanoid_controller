@@ -2,6 +2,10 @@
 #define MOTOR_MASTER_DYNAMIXEL_MASTER_HPP_
 
 #include <cerrno>
+#include <climits>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <string>
 #include <chrono>
 #include <memory>
@@ -15,6 +19,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
+#include <sys/ioctl.h>
+#include <linux/serial.h>
 
 #include "motor/core/motor_master.hpp"
 #include "motor/driver/dynamixel_driver.hpp"
@@ -81,6 +87,8 @@ public:
         if (::tcsetattr(fd_, TCSANOW, &tio) != 0) {
             throw std::runtime_error("[DynamixelMaster::initialize] Failed to configure serial port.");
         }
+
+        set_low_latency();
 
         for (uint8_t i = 0; i < n_ids_; ++i) {
             const uint8_t id = ids_[i];
@@ -358,6 +366,42 @@ private:
                 }
             }
             return out;
+        }
+    }
+
+    // FTDI USB-serial adapters (U2D2) deliver received bytes only every latency_timer ms (default 16): one sync read
+    // of 14 servos then takes ~30 ms instead of ~5 ms and the joint state is 30-60 ms old (ARTI-D1 sysid 2026-11-03:
+    // state updated every 30 ms, knee tracking error 0.3 rad in the demo). Ask the driver for low latency (1 ms) and
+    // check the sysfs value; print how to fix it when it cannot be set from here.
+    void set_low_latency() {
+        serial_struct ss{};
+        if (::ioctl(fd_, TIOCGSERIAL, &ss) == 0) {
+            ss.flags |= ASYNC_LOW_LATENCY;
+            ::ioctl(fd_, TIOCSSERIAL, &ss);
+        }
+        char resolved[PATH_MAX]{};
+        if (::realpath(device_.c_str(), resolved) == nullptr) return;
+        std::string tty(resolved);
+        tty = tty.substr(tty.find_last_of('/') + 1);
+        const std::string path = "/sys/bus/usb-serial/devices/" + tty + "/latency_timer";
+        int value = -1;
+        {
+            std::ifstream in(path);
+            if (!(in >> value)) return;  // not a USB-serial adapter
+        }
+        if (value > 1) {
+            std::ofstream out(path);
+            if (out << 1 << std::flush) {
+                std::ifstream in(path);
+                in >> value;
+            }
+        }
+        if (value > 1) {
+            std::cerr << "[DynamixelMaster] WARNING: " << path << " = " << value << " ms: the servo state is only read every ~"
+                      << 2 * value << " ms. Fix: echo 1 | sudo tee " << path
+                      << "  (or re-run requirements/udev-rules.sh and re-plug the adapter)" << std::endl;
+        } else {
+            std::cout << "[DynamixelMaster] " << device_ << " (" << tty << ") USB latency timer " << value << " ms" << std::endl;
         }
     }
 
