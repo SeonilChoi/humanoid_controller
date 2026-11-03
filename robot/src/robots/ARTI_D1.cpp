@@ -37,6 +37,7 @@ constexpr std::size_t OBS_COMMAND = OBS_PHASE + 2;                      // 129
 constexpr std::size_t OBSERVATION_SIZE = OBS_COMMAND + 3;               // 132
 constexpr auto STAND_UP_TIME = std::chrono::seconds(3);
 constexpr auto STAND_UP_PERIOD = std::chrono::milliseconds(10);
+constexpr double STAND_UP_SPEED = 0.3;   // rad/s, largest joint speed while moving to home / the default pose
 constexpr double PI = 3.14159265358979323846;
 
 // Isaac Lab articulation order of arti_d1 (robot.data.joint_names) = the policy observation / action order. The
@@ -128,6 +129,10 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
     const YAML::Node policy = YAML::LoadFile(config_file)["policy"];
     if (!policy) throw std::runtime_error("[ArtiD1::ArtiD1] robot.yaml has no 'policy' section.");
     default_pose_ = read_array<NUM_JOINTS>(policy, "default_pose");
+    if (policy["home_pose"]) {
+        home_pose_ = read_array<NUM_JOINTS>(policy, "home_pose");
+        has_home_pose_ = true;
+    }
     // Walking PD gains: motor.yaml 'kp' / 'kd' per motor (driver units, the real robot gains).
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         policy_kp_[i] = motor_manager_->gains(static_cast<uint8_t>(i)).kp;
@@ -320,23 +325,41 @@ void robot::ArtiD1::initialize() {
         std::cout << "[ArtiD1::initialize] " << (s == 0 ? "left" : "right") << " shoulder m7 servo at "
                   << motor_status[shoulder_m7_motor_index_[s]].position << " rad" << std::endl;
     }
-    std::array<double, NUM_JOINTS> pose{};
-    const auto begin = std::chrono::steady_clock::now();
-    const double duration = std::chrono::duration<double>(STAND_UP_TIME).count();
-    auto next_wakeup = begin;
-    while (true) {
-        const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
-        const double alpha = std::min(1.0, t / duration);
-        for (std::size_t i = 0; i < NUM_JOINTS; ++i) pose[i] = start[i] + (goal[i] - start[i]) * alpha;
-        set_motor_positions(pose.data());
-        for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
-            motor_command_[i].kp = policy_kp_[i];
-            motor_command_[i].kd = policy_kd_[i];
+    // measured pose -> home (robot.yaml policy.home_pose, the real servo zero) -> default pose (= the demo's first frame,
+    // where the policy starts); each move at <= STAND_UP_SPEED, at least STAND_UP_TIME
+    const auto move = [&](const std::array<double, NUM_JOINTS>& from, const std::array<double, NUM_JOINTS>& to,
+                          const char* name) {
+        double distance = 0.0;
+        for (std::size_t i = 0; i < NUM_JOINTS; ++i) distance = std::max(distance, std::abs(to[i] - from[i]));
+        const double duration = std::max(std::chrono::duration<double>(STAND_UP_TIME).count(), distance / STAND_UP_SPEED);
+        std::cout << "[ArtiD1::initialize] moving to " << name << " (" << duration << " s)" << std::endl;
+        std::array<double, NUM_JOINTS> pose{};
+        const auto begin = std::chrono::steady_clock::now();
+        auto next_wakeup = begin;
+        while (true) {
+            if (!motor_manager_->is_running()) {
+                throw std::runtime_error("[ArtiD1::initialize] Motor communication stopped while moving to the start pose.");
+            }
+            const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
+            const double alpha = std::min(1.0, t / duration);
+            for (std::size_t i = 0; i < NUM_JOINTS; ++i) pose[i] = from[i] + (to[i] - from[i]) * alpha;
+            set_motor_positions(pose.data());
+            for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+                motor_command_[i].kp = policy_kp_[i];
+                motor_command_[i].kd = policy_kd_[i];
+            }
+            motor_manager_->write(motor_command_);
+            if (alpha >= 1.0) break;
+            next_wakeup += STAND_UP_PERIOD;
+            std::this_thread::sleep_until(next_wakeup);
         }
-        motor_manager_->write(motor_command_);
-        if (alpha >= 1.0) break;
-        next_wakeup += STAND_UP_PERIOD;
-        std::this_thread::sleep_until(next_wakeup);
+    };
+    if (has_home_pose_) {
+        move(start, home_pose_, "home (real servo zero)");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        move(home_pose_, goal, "default pose (demo first frame)");
+    } else {
+        move(start, goal, "default pose (demo first frame)");
     }
     gait_phase_ = initial_gait_phase_;
     previous_actions_.fill(0.0);

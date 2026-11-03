@@ -2,7 +2,8 @@
 // config/681.yaml) open loop on the real servos at the log dt.
 //
 // Dynamixel servos have absolute encoders (motor.yaml zero_offset), so there is no homing / set_zero_offset: the
-// servos start limp, ramp from the pose they are in to the first log step, play the log, ramp back to the first step
+// servos start limp, move from the pose they are in to home (robot.yaml policy.home_pose next to motor.yaml, the real
+// servo zero; skipped when it is missing), then to the first log step, play the log, ramp back to the first step
 // and hold it until Ctrl+C (Ctrl+C while playing stops right there). The {side}_arm_m8crank_plate targets are URDF plate angles; their motor IDs are the real
 // shoulder m7 servos, so they go through ARTI_D1_shoulder like robot::ArtiD1 does.
 //
@@ -15,7 +16,9 @@
 #include <chrono>
 #include <csignal>
 #include <cstdio>
+#include <cmath>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -34,7 +37,9 @@ void on_sigint(int) { running = 0; }
 namespace shoulder = robot::arti_d1_shoulder;
 
 constexpr int NUM_JOINTS = 14;
-constexpr double RAMP_IN_TIME = 3.0;    // s, current pose -> first log step
+constexpr double RAMP_IN_TIME = 3.0;    // s, home -> first log step (minimum)
+constexpr double MOVE_SPEED = 0.3;      // rad/s, largest joint speed of the moves to home / the first step
+constexpr double HOME_HOLD_TIME = 1.0;  // s, at home
 constexpr double HOLD_TIME = 2.0;       // s, at the first log step before playing
 constexpr double RAMP_OUT_TIME = 1.0;   // s, last log step -> first log step
 
@@ -188,8 +193,23 @@ int main(int argc, char* argv[])
         std::fprintf(tracking, ",m7_des_left,m7_pos_left,m7_des_right,m7_pos_right\n");
     }
 
+    // Home = robot.yaml policy.home_pose in the motor config's folder (motor index order = policy order).
+    Pose home{};
+    bool has_home = false;
+    {
+        const auto robot_yaml = std::filesystem::path(motor_config_file).parent_path() / "robot.yaml";
+        if (std::filesystem::exists(robot_yaml)) {
+            const YAML::Node node = YAML::LoadFile(robot_yaml.string())["policy"]["home_pose"];
+            if (node && node.size() == NUM_JOINTS) {
+                for (int i = 0; i < NUM_JOINTS; ++i) home[i] = node[i].as<double>();
+                has_home = true;
+            }
+        }
+        std::cout << (has_home ? "Home pose from " : "No policy.home_pose in ") << robot_yaml.string() << std::endl;
+    }
+
     std::cout << "Loaded " << positions.size() << " steps (" << positions.size() * dt << " s), dt=" << dt
-              << " s; ramp in " << RAMP_IN_TIME << " s, hold " << HOLD_TIME << " s, play, back to the first step over "
+              << " s; move to home, then to the first step (>= " << RAMP_IN_TIME << " s), hold " << HOLD_TIME << " s, play, back to the first step over "
               << RAMP_OUT_TIME << " s" << std::endl;
 
     motor_manager::MotorManager motor_manager(motor_config_file);
@@ -242,7 +262,20 @@ int main(int argc, char* argv[])
         }
     };
 
-    ramp(start, positions.front(), RAMP_IN_TIME);
+    const auto move_time = [](const Pose& from, const Pose& to) {
+        double distance = 0.0;
+        for (int i = 0; i < NUM_JOINTS; ++i) distance = std::max(distance, std::abs(to[i] - from[i]));
+        return std::max(RAMP_IN_TIME, distance / MOVE_SPEED);
+    };
+    Pose from = start;
+    if (has_home) {
+        std::cout << "Moving to home (real servo zero)" << std::endl;
+        ramp(start, home, move_time(start, home));
+        for (int s = 0; s < static_cast<int>(HOME_HOLD_TIME / dt) && running; ++s) send(to_motor(home, m7_prev));
+        from = home;
+    }
+    std::cout << "Moving to the first demo step" << std::endl;
+    ramp(from, positions.front(), move_time(from, positions.front()));
     for (int s = 0; s < static_cast<int>(HOLD_TIME / dt) && running; ++s) send(motor_positions.front());
 
     std::cout << "Playing" << std::endl;

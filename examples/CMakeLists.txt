@@ -18,3 +18,6 @@ target_link_libraries(example_dualsense PRIVATE joy)
 
 add_executable(example_action src/hardware/motor/example_action.cpp)
 target_link_libraries(example_action PRIVATE motor robot yaml-cpp)
+
+add_executable(example_sysid src/hardware/motor/example_sysid.cpp)
+target_link_libraries(example_sysid PRIVATE motor robot yaml-cpp)
