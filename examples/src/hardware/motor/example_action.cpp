@@ -1,5 +1,5 @@
 // ARTI-D1 demo trajectory tracking: plays the joint targets of an arti_d1 scripts/replay_demo.py log (e.g.
-// config/954.yaml) open loop on the real servos at the log dt.
+// config/681.yaml) open loop on the real servos at the log dt.
 //
 // Dynamixel servos have absolute encoders (motor.yaml zero_offset), so there is no homing / set_zero_offset: the
 // servos start limp, ramp from the pose they are in to the first log step, play the log, ramp back to the first step
@@ -95,14 +95,19 @@ void apply_gains(const motor_manager::MotorManager& motor_manager, motor_interfa
 
 int main(int argc, char* argv[])
 {
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " <motor_config_file> <action_file> [tracking_csv]" << std::endl;
+    // No arguments: the ARTI-D1 motor config and the bundled demo gait (run from build/).
+    const char* motor_config_file = argc > 1 ? argv[1] : "../config/robot/ARTI-D1/motor.yaml";
+    const char* action_file = argc > 2 ? argv[2] : "../config/681.yaml";
+    if (std::string(motor_config_file) == "-h" || std::string(motor_config_file) == "--help") {
+        std::cerr << "Usage: " << argv[0] << " [<motor_config_file> <action_file> [tracking_csv]]" << std::endl;
+        std::cerr << "  default: ../config/robot/ARTI-D1/motor.yaml ../config/681.yaml" << std::endl;
         return 1;
     }
+    std::cout << "[example_action] motor config " << motor_config_file << ", demo " << action_file << std::endl;
 
     std::signal(SIGINT, on_sigint);
 
-    const YAML::Node logs = YAML::LoadFile(argv[2]);
+    const YAML::Node logs = YAML::LoadFile(action_file);
     const YAML::Node actions = logs["joint_targets"];
     if (!actions || !actions.IsSequence() || actions.size() == 0) {
         std::cerr << "Invalid action file: 'joint_targets' sequence is missing." << std::endl;
@@ -187,7 +192,7 @@ int main(int argc, char* argv[])
               << " s; ramp in " << RAMP_IN_TIME << " s, hold " << HOLD_TIME << " s, play, back to the first step over "
               << RAMP_OUT_TIME << " s" << std::endl;
 
-    motor_manager::MotorManager motor_manager(argv[1]);
+    motor_manager::MotorManager motor_manager(motor_config_file);
     if (motor_manager.number_of_motors() != NUM_JOINTS) {
         std::cerr << "motor config has " << motor_manager.number_of_motors() << " motors, ARTI-D1 has " << NUM_JOINTS << "." << std::endl;
         return 1;

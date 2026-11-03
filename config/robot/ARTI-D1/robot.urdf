@@ -13,7 +13,7 @@
 
   <!-- trunk = Fusion origin frame (zero mass); pelvis = root, origin at the ankle center on the floor -->
   <joint name="trunk_frame" type="fixed">
-      <origin xyz="0.00964957 0 0.246248" rpy="0 0 0" />
+      <origin xyz="0.00964957 0 0.254045" rpy="0 0 0" />
       <parent link="pelvis" />
       <child link="trunk" />
       <axis xyz="0 0 0"/>
@@ -21,16 +21,16 @@
 
   <link name="pelvis">
     <inertial>
-      <origin xyz="0.0142445 5.36923e-05 0.300732" rpy="0 0 0"/>
+      <origin xyz="0.0142445 5.36923e-05 0.308529" rpy="0 0 0"/>
       <mass value="3.69352"/>
       <inertia ixx="0.0179764" iyy="0.0137874" izz="0.0183283" ixy="4.22501e-06" iyz="-7.15743e-06" ixz="0.00060127"/>
     </inertial>
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.007797" rpy="0 0 0"/>
       <geometry><mesh filename="meshes/pelvis.stl" scale="0.001 0.001 0.001"/></geometry>
     </visual>
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.007797" rpy="0 0 0"/>
       <geometry><mesh filename="meshes/pelvis.stl" scale="0.001 0.001 0.001"/></geometry>
     </collision>
   </link>
@@ -246,14 +246,14 @@
     </collision>
   </link>
   <joint name="left_hip_yaw" type="revolute">
-    <origin xyz="0.00964957 0.035 0.281048" rpy="0 0 0"/>
+    <origin xyz="0.00964957 0.035 0.288845" rpy="0 0 0"/>
     <parent link="pelvis"/>
     <child link="left_hip"/>
     <axis xyz="0 0 1"/>
     <limit effort="10.6" velocity="3.14" lower="-0.523599" upper="0.523599"/>
   </joint>
   <joint name="left_hip_roll" type="revolute">
-    <origin xyz="-0.0295 0 -0.10025" rpy="0 0 0"/>
+    <origin xyz="-0.0295 0 -0.10025" rpy="-0.15 0 0"/>
     <parent link="left_hip"/>
     <child link="left_roll_to_pitch"/>
     <axis xyz="1 0 0"/>
@@ -281,14 +281,14 @@
     <limit effort="10.6" velocity="3.14" lower="-1.80565" upper="0.568"/>
   </joint>
   <joint name="right_hip_yaw" type="revolute">
-    <origin xyz="0.00964957 -0.035 0.281048" rpy="0 0 0"/>
+    <origin xyz="0.00964957 -0.035 0.288845" rpy="0 0 0"/>
     <parent link="pelvis"/>
     <child link="right_hip"/>
     <axis xyz="0 0 1"/>
     <limit effort="10.6" velocity="3.14" lower="-0.523599" upper="0.523599"/>
   </joint>
   <joint name="right_hip_roll" type="revolute">
-    <origin xyz="-0.0295 0 -0.10025" rpy="0 0 0"/>
+    <origin xyz="-0.0295 0 -0.10025" rpy="0.15 0 0"/>
     <parent link="right_hip"/>
     <child link="right_roll_to_pitch"/>
     <axis xyz="1 0 0"/>
@@ -316,7 +316,7 @@
     <limit effort="10.6" velocity="3.14" lower="-1.80565" upper="0.568"/>
   </joint>
   <joint name="left_arm_m8" type="revolute">
-    <origin xyz="0.0248443 0.12358 0.272732" rpy="0 0 0"/>
+    <origin xyz="0.0248443 0.12358 0.280529" rpy="0 0 0"/>
     <parent link="pelvis"/>
     <child link="left_arm_m8_crank"/>
     <axis xyz="-0.258819 0 0.965926"/>
@@ -330,7 +330,7 @@
     <limit effort="4.1" velocity="4.82" lower="-0.226893" upper="1.16937"/>
   </joint>
   <joint name="right_arm_m8" type="revolute">
-    <origin xyz="0.0248443 -0.12358 0.272732" rpy="0 0 0"/>
+    <origin xyz="0.0248443 -0.12358 0.280529" rpy="0 0 0"/>
     <parent link="pelvis"/>
     <child link="right_arm_m8_crank"/>
     <axis xyz="0.258819 0 -0.965926"/>

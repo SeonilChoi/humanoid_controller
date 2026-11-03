@@ -127,10 +127,12 @@ Hang the robot so the feet are off the ground for the first runs.
 The optional last argument writes a CSV with the target and the measured angle of every joint per step.
 ```bash
 cd ~/humanoid_controller/build
-./examples/example_action ../config/robot/ARTI-D1/motor.yaml ../config/954.yaml tracking_954.csv
+./examples/example_action                                   # = ../config/robot/ARTI-D1/motor.yaml ../config/681.yaml
+./examples/example_action ../config/robot/ARTI-D1/motor.yaml ../config/681.yaml tracking_681.csv   # + tracking CSV
 ```
-`config/954.yaml` is the arti_d1 reference motion 954 (straight walk, 0.06 m/s, 15 s), made with
-`python scripts/replay_demo.py --motion_set arti_d1 --index 954 --output 954.yaml --headless --no_realtime` in arti_d1.
+`config/681.yaml` is the current arti_d1 reference motion 681 (straight walk 0.04 m/s, 1.625 s gait cycle, 28 mm swing,
+15 s), made with `python scripts/replay_demo.py --motion_set arti_d1 --index 681 --output 681.yaml --no_realtime` in
+arti_d1.
 
 ### Sensor test
 ```bash
@@ -191,11 +193,15 @@ Check the joints and the IMU first (no policy, the robot holds the default pose)
 ./ARTI-D1 ../config/robot/ARTI-D1/robot.yaml --observe
 ```
 Every printed motor angle must match the URDF joint direction and read the default pose; fix `axis` / `zero_offset`
-otherwise. Then export the policy (`python scripts/pt_to_onnx.py --checkpoint <agent_N.pt> --output agent.onnx` in
-ARTI-D1_IsaacLab), copy it to `config/robot/ARTI-D1/agent.onnx` and run:
+otherwise. `config/robot/ARTI-D1/agent.onnx` is the arti_d1 policy (PhysX pure-RL run B, 2.83M steps; checked in the
+training env: ONNX q_des = env target within 1e-6 rad, 16 robots x 20 s from standstill without a fall). Run it:
 ```bash
 ./ARTI-D1 ../config/robot/ARTI-D1/robot.yaml
 ```
+The robot stands up into the default pose (3 s), waits 10 s, then the policy starts standing in place. Left stick =
+forward / sideways (full stick 0.043 / 0.017 m/s), right stick = turn (0.099 rad/s); release the sticks to stop.
+Another policy: export it with `python scripts/pt_to_onnx.py --checkpoint <agent_N.pt> --output agent.onnx` in
+ARTI-D1_IsaacLab and replace `config/robot/ARTI-D1/agent.onnx`.
 
 ## Troubleshooting
 
