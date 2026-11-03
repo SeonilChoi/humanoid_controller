@@ -63,6 +63,8 @@ using Pose = std::array<double, N>;
 struct JointLimits {
     Pose min{};  // URDF joint limits (plates: shoulder PLATE_MIN / MAX, motor.yaml holds the m7 ones)
     Pose max{};
+    Pose axis{};         // motor.yaml axis / zero_offset, only to print the servo pulse when a test aborts
+    Pose zero_offset{};
 };
 
 struct Config {
@@ -105,6 +107,8 @@ JointLimits load_limits(const std::string& motor_config) {
             if (index < 0 || index >= N) throw std::runtime_error("Motor id out of range in " + motor_config);
             limits.min[index] = motor["min"].as<double>();
             limits.max[index] = motor["max"].as<double>();
+            limits.axis[index] = motor["axis"].as<double>();
+            limits.zero_offset[index] = motor["zero_offset"].as<double>(0.0);
             seen[index] = true;
         }
     }
@@ -205,8 +209,14 @@ public:
         std::ostringstream why;
         for (int i = 0; i < N; ++i) {
             const auto& s = status[i];
-            if (joint[i] < limits_.min[i] - HW_MARGIN || joint[i] > limits_.max[i] + HW_MARGIN) {
-                why << kJointNames[i] << " position " << joint[i] << " outside the joint limits [" << limits_.min[i]
+            if (s.error != 0) {
+                // first, so an overload / hardware alert is named even when the joint then moves out of range
+                why << kJointNames[i] << " servo status error 0x" << std::hex << static_cast<int>(s.error) << std::dec
+                    << " (0x80 = hardware alert: overload / overheat / voltage; check Hardware Error Status in the Wizard)";
+            } else if (joint[i] < limits_.min[i] - HW_MARGIN || joint[i] > limits_.max[i] + HW_MARGIN) {
+                why << kJointNames[i] << " position " << joint[i] << " (servo angle " << s.position << " rad = pulse ~"
+                    << std::lround((s.position * limits_.axis[i] + limits_.zero_offset[i]) / (2.0 * PI) * 4096.0)
+                    << " modulo 4096) outside the joint limits [" << limits_.min[i]
                     << ", " << limits_.max[i] << "] (axis / zero_offset wrong?)";
             } else if (std::abs(std::clamp(target[i], config_.lo[i], config_.hi[i]) - joint[i]) > config_.abort_tracking_error) {
                 why << kJointNames[i] << " tracking error " << target[i] - joint[i] << " rad";
@@ -214,8 +224,6 @@ public:
                 why << kJointNames[i] << " current " << s.torque << " A";
             } else if (s.temperature > config_.abort_temperature) {
                 why << kJointNames[i] << " temperature " << s.temperature << " C";
-            } else if (s.error != 0) {
-                why << kJointNames[i] << " servo status error 0x" << std::hex << static_cast<int>(s.error) << std::dec;
             }
             if (why.tellp() > 0) return why.str();
         }
@@ -275,6 +283,7 @@ public:
             }
             if (!why.empty()) {
                 limp();
+                aborted_ = true;
                 std::cerr << "[sysid] ABORT: " << why << " -> every servo limp." << std::endl;
                 ok = false;
                 break;
@@ -290,6 +299,8 @@ public:
         if (csv != nullptr) std::fclose(csv);
         return ok;
     }
+
+    bool aborted() const { return aborted_; }
 
     // Straight-line move of every joint to 'goal' at move_speed (no log), then 0.5 s hold.
     bool move_to(const Pose& from, const Pose& goal) {
@@ -311,6 +322,7 @@ private:
     Pose kp_{};
     Pose kd_{};
     std::array<double, 2> m7_prev_{};
+    bool aborted_{false};  // a safety check tripped: every servo is limp and nothing may move any more
 };
 
 bool wait_for_enter(const std::string& message) {
@@ -552,7 +564,9 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        if (running && manager.is_running()) {
+        if (rig.aborted()) {
+            std::cout << "[sysid] Aborted: every servo stays limp (no move back to home)." << std::endl;
+        } else if (running && manager.is_running()) {
             std::cout << "[sysid] Tests done: back to home, hold 2 s, then every servo limp." << std::endl;
             if (rig.move_to(here, config.home_pose)) rig.run(2.0, [&](double) { return config.home_pose; }, "", "");
         }
