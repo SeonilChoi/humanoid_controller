@@ -303,7 +303,7 @@ public:
     bool aborted() const { return aborted_; }
 
     // Straight-line move of every joint to 'goal' at move_speed (no log), then 0.5 s hold.
-    bool move_to(const Pose& from, const Pose& goal) {
+    bool move_to(const Pose& from, const Pose& goal, const std::string& csv_path = "") {
         double distance = 0.0;
         for (int i = 0; i < N; ++i) distance = std::max(distance, std::abs(goal[i] - from[i]));
         const double duration = std::max(0.5, distance / config_.move_speed);
@@ -312,7 +312,7 @@ public:
             Pose p{};
             for (int i = 0; i < N; ++i) p[i] = from[i] + (goal[i] - from[i]) * a;
             return p;
-        }, "", "") && run(0.5, [&](double) { return goal; }, "", "");
+        }, csv_path, "type=move") && run(0.5, [&](double) { return goal; }, "", "");
     }
 
 private:
@@ -360,12 +360,23 @@ double piecewise(double t, const std::vector<std::pair<double, double>>& points)
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    const std::string motor_config = argc > 1 ? argv[1] : "../config/robot/ARTI-D1/motor.yaml";
-    const std::string sysid_config = argc > 2 ? argv[2] : "../config/sysid/ARTI-D1.yaml";
-    const std::filesystem::path out_dir(argc > 3 ? argv[3] : "./sysid_logs");
+    bool passive = false;
+    std::vector<std::string> args;
+    for (int i = 1; i < argc; ++i) {
+        const std::string a = argv[i];
+        if (a == "--passive") {
+            passive = true;
+        } else {
+            args.push_back(a);
+        }
+    }
+    const std::string motor_config = args.size() > 0 ? args[0] : "../config/robot/ARTI-D1/motor.yaml";
+    const std::string sysid_config = args.size() > 1 ? args[1] : "../config/sysid/ARTI-D1.yaml";
+    const std::filesystem::path out_dir(args.size() > 2 ? args[2] : "./sysid_logs");
     if (motor_config == "-h" || motor_config == "--help") {
-        std::cerr << "Usage: " << argv[0] << " [<motor_config.yaml> <sysid_config.yaml> <output_dir>]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [--passive] [<motor_config.yaml> <sysid_config.yaml> <output_dir>]" << std::endl;
         std::cerr << "  default: ../config/robot/ARTI-D1/motor.yaml ../config/sysid/ARTI-D1.yaml ./sysid_logs" << std::endl;
+        std::cerr << "  --passive: every servo limp, print the joint angles; move each joint by hand to check its sign" << std::endl;
         return 1;
     }
     std::signal(SIGINT, on_sigint);
@@ -413,11 +424,54 @@ int main(int argc, char* argv[]) {
             std::cout << "  " << kJointNames[i] << "  " << start[i] << " -> " << config.hold_pose[i]
                       << (bad ? "   <-- OUTSIDE the joint limits: check axis / zero_offset" : "") << std::endl;
         }
-        if (outside) throw std::runtime_error("Measured pose outside the joint limits; fix motor.yaml before moving.");
-        if (!wait_for_enter("[sysid] Do the measured angles match the pose the robot is in? Move to hold_pose")) {
+        if (outside && !passive) throw std::runtime_error("Measured pose outside the joint limits; fix motor.yaml before moving.");
+        if (!passive && !wait_for_enter("[sysid] Do the measured angles match the pose the robot is in? Move to hold_pose")) {
             throw std::runtime_error("Stopped before moving.");
         }
-        if (!rig.move_to(start, config.hold_pose)) throw std::runtime_error("Aborted while moving to hold_pose.");
+        if (passive) {
+            // No torque at all: move each joint by hand in its + direction (expect_positive) and watch it count up.
+            std::cout << "[sysid] PASSIVE: every servo limp. Move one joint by hand in the direction below; its value "
+                         "must INCREASE. Ctrl+C to stop." << std::endl;
+            for (int i = 0; i < N; ++i) {
+                const std::string name = kJointNames[i];
+                std::cout << "  ID " << i + 1 << " " << name << " +: "
+                          << (config.expect_positive[name] ? config.expect_positive[name].as<std::string>() : "?") << std::endl;
+            }
+            std::FILE* csv = std::fopen((out_dir / "00_passive.csv").string().c_str(), "w");
+            if (csv != nullptr) {
+                std::fprintf(csv, "t");
+                for (int i = 0; i < N; ++i) std::fprintf(csv, ",%s_pos", kJointNames[i]);
+                std::fprintf(csv, "\n");
+            }
+            const auto t0 = Clock::now();
+            int tick = 0;
+            while (running && manager.is_running()) {
+                rig.limp();
+                const Pose q = rig.read_joints(status);
+                const double t = std::chrono::duration<double>(Clock::now() - t0).count();
+                if (csv != nullptr) {
+                    std::fprintf(csv, "%.3f", t);
+                    for (int i = 0; i < N; ++i) std::fprintf(csv, ",%.5f", q[i]);
+                    std::fprintf(csv, "\n");
+                }
+                if (tick++ % 5 == 0) {
+                    std::ostringstream line;
+                    line.setf(std::ios::fixed);
+                    line.precision(1);
+                    for (int i = 0; i < N; ++i) line << " " << i + 1 << ":" << q[i] * 180.0 / PI;
+                    std::cout << "[deg]" << line.str() << std::endl;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            if (csv != nullptr) std::fclose(csv);
+            rig.limp();
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            manager.stop();
+            return 0;
+        }
+        if (!rig.move_to(start, config.hold_pose, (out_dir / "00_move_to_hold.csv").string())) {
+            throw std::runtime_error("Aborted while moving to hold_pose (log " + (out_dir / "00_move_to_hold.csv").string() + ").");
+        }
         Pose here = config.hold_pose;  // pose the robot holds between tests
 
         int test_number = 0;

@@ -196,6 +196,13 @@ mkdir -p build && cd build && cmake .. && make -j2
 ```
 Run everything from `build/`. **Hang the robot (feet off the ground) for steps 1 and 2 and for the first policy run.**
 
+**0. Sign check by hand (no torque)**: every servo limp; the joint angles print 2x per second (`ID:deg`). Move one
+joint at a time by hand in the + direction printed at the start (e.g. `left_knee +: left foot moves BACKWARD`); its
+value must go UP. If it goes down, flip that motor's `axis` in `config/robot/ARTI-D1/motor.yaml`. `Ctrl+C` to stop.
+```bash
+./examples/example_sysid --passive
+```
+
 **1. Joint check -> home -> demo** (`config/sysid/ARTI-D1.yaml`; asks before every test: Enter = run, `s` = skip,
 `q` = quit):
 ```bash
@@ -210,7 +217,7 @@ Run everything from `build/`. **Hang the robot (feet off the ground) for steps 1
 5. `replay`: moves to the first frame of `config/681.yaml`, holds 2 s, plays the demo (15 s), back to the first frame;
 6. back to home, hold 2 s, every servo limp.
 
-Each test writes a CSV to `sysid_logs/` (target, angle, velocity, current, temperature of every joint). It stops with
+The first move to the default pose is logged to `sysid_logs/00_move_to_hold.csv`. Each test writes a CSV to `sysid_logs/` (target, angle, velocity, current, temperature of every joint). It stops with
 every servo limp on a tracking error > 0.3 rad, current > 3 A, temperature > 70 C or a servo error. Response tests
 (`step`, `chirp`, `sweep`) are in the yaml, commented out.
 
