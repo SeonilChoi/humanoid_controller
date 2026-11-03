@@ -7,9 +7,9 @@
 # zero_offset: motor angle (rad) at the joint zero, motor / gear_ratio = joint * axis + zero_offset; pi = pulse 2048.
 #   axis / zero_offset are assembly dependent: check every joint with `ARTI-D1 ... --observe` (the printed motor angle
 #   must follow the URDF axis sign and read the default pose when the robot is in it) before enabling the policy.
-# Real zero (USER 2026-11-03): every servo reads pi (pulse 2048) with the hip link level, each leg straight and pointing
-#   backward at 90 deg to the upper body, sole perpendicular to the ground = URDF hip_roll +/-0.15, hip_pitch +0.9383,
-#   knee +1.3736, ankle -0.7411 rad (motion_generator scripts/view_real_zero.py). zero_offset = pi - axis * that angle.
+# Real zero (USER 2026-11-03): every servo reads pi (pulse 2048) with the hip link level, each leg straight and vertical,
+#   sole flat on the ground = URDF hip_roll +/-0.15, hip_pitch -0.6325, knee +1.3736, ankle -0.7411 rad
+#   (motion_generator scripts/view_real_zero.py --leg_deg 0 --foot_deg 0). zero_offset = pi - axis * that angle.
 #   axis -1 (USER): left_hip_yaw, left_ankle, right_hip_yaw, right_hip_pitch, right_knee, left m7 (ID 5), right_arm_m8.
 # min / max: the URDF joint limits (= the training sim limits); goal positions are clamped to them.
 # Shoulders: IDs 5 / 7 are the real m7 servos of the 2-DoF 5-bar (the URDF opens it into serial m8 + m8crank_plate
@@ -106,7 +106,7 @@ masters:
       - id: 9    # left_hip_pitch (XH540-W270)
         gear_ratio: 1.0
         axis: 1
-        zero_offset: 2.20330389    # pi (pulse 2048) at the real zero, URDF left_hip_pitch = +0.9383 rad
+        zero_offset: 3.77410021    # pi (pulse 2048) at the real zero, URDF left_hip_pitch = -0.6325 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
@@ -116,7 +116,7 @@ masters:
       - id: 10    # right_hip_pitch (XH540-W270)
         gear_ratio: 1.0
         axis: -1    # real servo turns opposite to the URDF axis (USER 2026-11-03)
-        zero_offset: 4.07988142    # pi (pulse 2048) at the real zero, URDF right_hip_pitch = +0.9383 rad
+        zero_offset: 2.50908509    # pi (pulse 2048) at the real zero, URDF right_hip_pitch = -0.6325 rad
         pulse_per_revolution: 4096
         kp: 800
         kd: 0
