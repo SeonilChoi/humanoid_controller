@@ -75,6 +75,8 @@ struct Config {
     Pose lo{};  // safe box = config safe_min/max intersected with the URDF joint limits
     Pose hi{};
     double abort_tracking_error{0.3};
+    double abort_replay_tracking_error{0.6};
+    double abort_tracking_time{0.1};
     double abort_current{3.0};
     double abort_temperature{70.0};
     YAML::Node expect_positive;
@@ -145,6 +147,8 @@ Config load_config(const std::string& sysid_config, const JointLimits& limits) {
     }
     const YAML::Node abort = root["abort"];
     c.abort_tracking_error = abort["tracking_error"].as<double>(0.3);
+    c.abort_replay_tracking_error = abort["replay_tracking_error"].as<double>(0.6);
+    c.abort_tracking_time = abort["tracking_time"].as<double>(0.1);
     c.abort_current = abort["current"].as<double>(3.0);
     c.abort_temperature = abort["temperature"].as<double>(70.0);
     c.expect_positive = root["expect_positive"];
@@ -204,7 +208,18 @@ public:
     }
 
     // Empty string = safe.
-    std::string check(const Pose& target, const Pose& joint, const motor_interface::motor_state_t* status) const {
+    // Tracking error limit of the next run() calls (the demo replay runs at servo speed and lags more).
+    void set_tracking_limit(double limit) {
+        tracking_limit_ = limit;
+        over_count_.fill(0);
+    }
+
+    // Largest |target - position| per joint since the last reset.
+    const Pose& max_tracking_error() const { return max_tracking_error_; }
+    void reset_tracking_stats() { max_tracking_error_.fill(0.0); }
+
+    std::string check(const Pose& target, const Pose& joint, const motor_interface::motor_state_t* status) {
+        const int persist = std::max(1, static_cast<int>(std::lround(config_.abort_tracking_time * 1e6 / config_.loop_period_us)));
         if (!manager_.is_running()) return "motor communication stopped";
         std::ostringstream why;
         for (int i = 0; i < N; ++i) {
@@ -218,8 +233,12 @@ public:
                     << std::lround((s.position * limits_.axis[i] + limits_.zero_offset[i]) / (2.0 * PI) * 4096.0)
                     << " modulo 4096) outside the joint limits [" << limits_.min[i]
                     << ", " << limits_.max[i] << "] (axis / zero_offset wrong?)";
-            } else if (std::abs(std::clamp(target[i], config_.lo[i], config_.hi[i]) - joint[i]) > config_.abort_tracking_error) {
-                why << kJointNames[i] << " tracking error " << target[i] - joint[i] << " rad";
+            } else if (const double e = std::abs(std::clamp(target[i], config_.lo[i], config_.hi[i]) - joint[i]);
+                       (max_tracking_error_[i] = std::max(max_tracking_error_[i], e), over_count_[i] = e > tracking_limit_ ? over_count_[i] + 1 : 0)
+                       >= persist) {
+                // only a lasting error counts: the servos lag a fast target for a few bus cycles
+                why << kJointNames[i] << " tracking error " << target[i] - joint[i] << " rad for "
+                    << over_count_[i] * config_.loop_period_us / 1000 << " ms (limit " << tracking_limit_ << " rad)";
             } else if (std::abs(s.torque) > config_.abort_current) {
                 why << kJointNames[i] << " current " << s.torque << " A";
             } else if (s.temperature > config_.abort_temperature) {
@@ -322,6 +341,9 @@ private:
     Pose kp_{};
     Pose kd_{};
     std::array<double, 2> m7_prev_{};
+    double tracking_limit_{config_.abort_tracking_error};
+    std::array<int, N> over_count_{};
+    Pose max_tracking_error_{};
     bool aborted_{false};  // a safety check tripped: every servo is limp and nothing may move any more
 };
 
@@ -517,12 +539,29 @@ int main(int argc, char* argv[]) {
                 if (!rig.move_to(here, frames.front())) break;
                 here = frames.front();
                 if (!rig.run(test["hold"].as<double>(2.0), [&](double) { return frames.front(); }, "", "")) break;
-                const double duration = frames.size() * dt;
+                // speed < 1 plays the demo slower (same path), e.g. 0.5 = half speed
+                const double speed = test["speed"].as<double>(1.0);
+                const double duration = frames.size() * dt / speed;
                 const std::string csv = (out_dir / (std::string(prefix) + "_replay.csv")).string();
-                const bool ok = rig.run(duration, [&](double t) {
-                    return frames[std::min(frames.size() - 1, static_cast<std::size_t>(t / dt))];
-                }, csv, "type=replay file=" + file + " dt=" + std::to_string(dt));
+                // linear interpolation between frames (no 60 Hz steps at the 100 Hz loop)
+                const auto at = [&](double t) {
+                    const double f = std::clamp(t * speed / dt, 0.0, static_cast<double>(frames.size() - 1));
+                    const std::size_t k = std::min(frames.size() - 2, static_cast<std::size_t>(f));
+                    const double a = f - static_cast<double>(k);
+                    Pose p{};
+                    for (int i = 0; i < N; ++i) p[i] = frames[k][i] + a * (frames[k + 1][i] - frames[k][i]);
+                    return p;
+                };
+                rig.set_tracking_limit(config.abort_replay_tracking_error);
+                rig.reset_tracking_stats();
+                const bool ok = rig.run(duration, at, csv, "type=replay file=" + file + " dt=" + std::to_string(dt) +
+                                        " speed=" + std::to_string(speed));
+                rig.set_tracking_limit(config.abort_tracking_error);
                 std::cout << "[sysid] " << (ok ? "saved " : "ABORTED, partial log ") << csv << std::endl;
+                std::cout << "[sysid] Largest tracking error per joint during the replay (rad):" << std::endl;
+                for (int i = 0; i < N; ++i) {
+                    std::cout << "  ID " << i + 1 << " " << kJointNames[i] << "  " << rig.max_tracking_error()[i] << std::endl;
+                }
                 if (!ok || !rig.move_to(frames.back(), frames.front())) break;
                 continue;
             }

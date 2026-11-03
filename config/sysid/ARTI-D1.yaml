@@ -35,7 +35,10 @@ safe_max: [ 0.35,  0.25,  0.35,  0.25,  0.15,  0.21,  0.15,  0.27,  0.43,  0.43,
 
 # Abort (every servo limp) if any of these trips.
 abort:
-  tracking_error: 0.30   # |command - position| rad
+  tracking_error: 0.30          # |command - position| rad, joint tests and moves
+  replay_tracking_error: 0.60   # same during the demo replay: the knees follow up to 3.3 rad/s there and lag more
+  tracking_time: 0.10           # s the error must stay over the limit before it aborts (a few bus cycles of lag
+                                # behind a fast target are normal)
   current: 3.0           # |present current| A (XH540-W270 stall 4.4 A, XM430-W350 2.3 A at 12 V)
   temperature: 70.0      # deg C
 
@@ -66,7 +69,8 @@ expect_positive:
 #   chirp:  sinusoid of 'amplitude' around hold_pose, frequency f0 -> f1 (log sweep) over 'duration' s.
 #   sweep:  triangle wave of 'amplitude' at each speed in 'speeds' (rad/s), 'cycles' times (friction, speed limit).
 #   home:   move to home_pose, print measured - home_pose per joint, hold 'hold' s.
-#   replay: move to the first frame of a replay_demo log, hold 'hold' s, play it on all joints, back to the first frame.
+#   replay: move to the first frame of a replay_demo log, hold 'hold' s, play it on all joints at 'speed' (frames
+#           interpolated), back to the first frame; prints the largest tracking error per joint.
 tests:
   - {type: check, joint: left_hip_yaw, amplitude: 0.1, speed: 0.1}
   - {type: check, joint: right_hip_yaw, amplitude: 0.1, speed: 0.1}
@@ -87,4 +91,5 @@ tests:
   # - {type: chirp, joint: left_knee, amplitude: 0.05, f0: 0.3, f1: 5.0, duration: 20.0}
   # - {type: sweep, joint: left_knee, amplitude: 0.15, speeds: [0.5, 1.0, 2.0], cycles: 3}
   - {type: home, hold: 2.0}
-  - {type: replay, file: ../config/681.yaml, hold: 2.0}
+  # speed: 1.0 = real time (knees up to 3.3 rad/s); 0.5 = same motion at half speed
+  - {type: replay, file: ../config/681.yaml, hold: 2.0, speed: 1.0}
