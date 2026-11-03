@@ -10,7 +10,7 @@
 //
 // Differences to ARTI-H1: Dynamixel servos keep their zero (absolute encoders, motor.yaml zero_offset), so there is no
 // homing run; the servos start limp and move from where they are to hold_pose. 'home' moves to home_pose, the real
-// servo zero (every servo at pulse 2048). Commands are URDF joint angles; the
+// servo zero (every servo at pulse 0). Commands are URDF joint angles; the
 // {side}_arm_m8crank_plate entries go through ARTI_D1_shoulder to the real shoulder m7 servos (as robot::ArtiD1 and
 // example_action do). Abort = every servo limp (Position P Gain 0). 'torque' of a Dynamixel is its present current (A).
 
@@ -419,7 +419,7 @@ int main(int argc, char* argv[]) {
             if (type == "home") {
                 const double hold = test["hold"].as<double>(2.0);
                 if (!wait_for_enter("[sysid] " + std::string(prefix) + " move to home (real servo zero: hip link level, legs "
-                                    "straight and vertical, soles flat; every servo at pulse 2048).")) continue;
+                                    "straight and vertical, soles flat; every servo at pulse 0).")) continue;
                 if (!rig.move_to(here, config.home_pose)) break;
                 here = config.home_pose;
                 motor_interface::motor_state_t s[motor_interface::MAX_MOTORS]{};

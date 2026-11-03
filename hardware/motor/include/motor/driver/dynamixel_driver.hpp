@@ -1,6 +1,7 @@
 #ifndef MOTOR_DRIVER_DYNAMIXEL_DRIVER_HPP_
 #define MOTOR_DRIVER_DYNAMIXEL_DRIVER_HPP_
 
+#include <cmath>
 #include <cstdint>
 #include <cstddef>
 #include <stdexcept>
@@ -104,17 +105,30 @@ private:
         } else {
             motor = (clamp(value, min_, max_) * axis_ + zero_offset_) * gear_ratio_;
         }
-        return static_cast<int32_t>(motor / (PI * 2.0) * pulse_per_revolution_);
+        return static_cast<int32_t>(std::lround(motor / (PI * 2.0) * pulse_per_revolution_)) + turn_pulses_;
     }
     double position(const int32_t& value) {
-        const double motor = static_cast<double>(value) / pulse_per_revolution_ * (PI * 2.0);
+        double motor = static_cast<double>(value) / pulse_per_revolution_ * (PI * 2.0);
         if (zero_offset_ == -10.0) {
             return motor / gear_ratio_ * axis_;
         } else {
+            // Unwrap to the turn that holds the joint range: Extended Position Mode (4) restarts Present Position
+            // inside 0-4095 at power-on and the zero may sit at pulse 0, so e.g. -24 can read 4072. Every joint range
+            // is shorter than one turn, so the turn nearest the motor angle of the range centre is the right one.
+            // The removed turns are kept and added back to every goal (encode), so the servo is never sent around a
+            // full turn to reach the unwrapped angle.
+            if (gear_ratio_ == 1.0) {
+                const double center = 0.5 * (min_ + max_) * axis_ + zero_offset_;
+                const double turns = std::round((motor - center) / (2.0 * PI));
+                motor -= 2.0 * PI * turns;
+                turn_pulses_ = static_cast<int32_t>(turns) * static_cast<int32_t>(pulse_per_revolution_);
+            }
             // inverse of position(double): motor / gear = joint * axis + zero_offset (also right for axis -1)
             return (motor / gear_ratio_ - zero_offset_) * axis_;
         }
     }
+    int32_t turn_pulses_{0};  // whole turns between the servo's Present Position and the unwrapped angle (decode)
+
     double velocity(const int32_t& value) {
         const double rpm = static_cast<double>(value) * XM430_VELOCITY_UNIT;
         const double motor = rpm * (PI * 2.0) / 60.0;

@@ -172,15 +172,18 @@ The Dynamixel IDs follow the training (Isaac Lab) joint order:
 | 6 | left_hip_roll | 13 | left_ankle |
 | 7 | right_arm_m8crank_plate | 14 | right_ankle |
 
-Servo setup (Dynamixel Wizard): ID as above, Baud Rate 1 Mbps, Operating Mode 3 (Position) or 4 (Extended Position;
-torque off before changing it), Return Delay Time 0. Every joint range stays inside one servo turn (pulse 921-3174).
+Servo setup (Dynamixel Wizard): ID as above, Baud Rate 1 Mbps, **Operating Mode 4 (Extended Position)** (torque off
+before changing it), Return Delay Time 0. The real zero is pulse 0, so half of each joint range is below pulse 0, which
+only Extended Position Mode accepts. Present Position restarts inside 0-4095 at power-on (pulse -24 reads 4072); the
+driver unwraps it to the turn of the joint range (every range is shorter than one turn) and adds that turn back to
+the goals, so a servo is never sent around a full turn.
 The servos have absolute encoders, so there is no homing: `config/robot/ARTI-D1/motor.yaml` sets each joint zero with
-`zero_offset` (motor angle in rad, pi = pulse 2048) and the direction with `axis`. `kp` / `kd` are the Position P / D
+`zero_offset` (motor angle in rad at the URDF joint zero, 0 = pulse 0) and the direction with `axis`. `kp` / `kd` are the Position P / D
 Gain register values the controller writes (factory 800 / 0, the values the training sim models).
 
-Home = the real servo zero, where every servo reads pulse 2048 (pi): hip link level, legs straight and vertical, soles
+Home = the real servo zero, where every servo reads pulse 0 (the zero the Dynamixel keeps): hip link level, legs straight and vertical, soles
 flat. In URDF joint angles hip_roll +/-0.15, hip_pitch -0.6325, knee +1.3736, ankle -0.7411 rad (`robot.yaml`
-`policy.home_pose`, `motor.yaml` `zero_offset = pi - axis * home angle`). Every program below starts with the servos
+`policy.home_pose`, `motor.yaml` `zero_offset = -axis * home angle`). Every program below starts with the servos
 limp and moves from where the robot is; there is no homing run (the Dynamixel servos keep their zero).
 
 ### ARTI-D1 run order
