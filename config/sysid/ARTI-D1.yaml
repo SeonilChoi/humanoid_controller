@@ -39,21 +39,24 @@ abort:
   current: 3.0           # |present current| A (XH540-W270 stall 4.4 A, XM430-W350 2.3 A at 12 V)
   temperature: 70.0      # deg C
 
-# Expected motion for +0.1 rad from hold_pose (URDF FK; x forward, y left, z up). The 'check' test prints these and
-# asks whether the joint moved that way first. If not, flip that motor's 'axis' in motor.yaml.
+# Expected motion for +0.1 rad from hold_pose (URDF FK). Directions are the ROBOT's own: forward = where the robot
+# faces, left = the robot's left. Standing in FRONT of the robot (facing it), its left is YOUR right and its forward
+# comes toward you. The 'check' test prints these and asks whether the joint moved that way first.
+# Joints whose hold_pose is far from home_pose (hip_roll, hip_pitch, knee, ankle) already prove their axis: with a
+# wrong axis the move to hold_pose / home would end visibly wrong. hip_yaw and the arms (hold = home) only show it here.
 expect_positive:
-  left_arm_m8:             "left arm swings BACKWARD (hand ~17 mm back)"
-  right_arm_m8:            "right arm swings BACKWARD (hand ~17 mm back)"
+  left_arm_m8:             "left arm swings BACKWARD (hand ~17 mm toward the robot's back)"
+  right_arm_m8:            "right arm swings BACKWARD (hand ~17 mm toward the robot's back)"
   left_arm_m8crank_plate:  "left arm LIFTS sideways (hand ~17 mm up)"
   right_arm_m8crank_plate: "right arm LIFTS sideways (hand ~17 mm up)"
-  left_hip_yaw:            "left toes turn LEFT (counter-clockwise seen from above, 5.7 deg)"
-  right_hip_yaw:           "right toes turn LEFT (counter-clockwise seen from above, 5.7 deg)"
-  left_hip_roll:           "left foot swings OUTWARD (to the left) 19 mm"
-  right_hip_roll:          "right foot swings INWARD (to the left, toward the left leg) 19 mm"
-  left_hip_pitch:          "left foot swings BACKWARD 18 mm, toes tilt down"
-  right_hip_pitch:         "right foot swings BACKWARD 18 mm, toes tilt down"
-  left_knee:               "left foot moves BACKWARD 12 mm (knee bends forward), toes tilt down"
-  right_knee:              "right foot moves BACKWARD 12 mm (knee bends forward), toes tilt down"
+  left_hip_yaw:            "left toes turn to the ROBOT's left (counter-clockwise seen from above; facing the robot: to YOUR right)"
+  right_hip_yaw:           "right toes turn to the ROBOT's left (counter-clockwise seen from above; facing the robot: to YOUR right)"
+  left_hip_roll:           "left foot swings OUTWARD (to the robot's left) 19 mm"
+  right_hip_roll:          "right foot swings INWARD (to the robot's left, toward the left leg) 19 mm"
+  left_hip_pitch:          "left foot swings BACKWARD 18 mm (toward the robot's back), toes tilt down"
+  right_hip_pitch:         "right foot swings BACKWARD 18 mm (toward the robot's back), toes tilt down"
+  left_knee:               "left foot moves BACKWARD 12 mm (knee bends), toes tilt down"
+  right_knee:              "right foot moves BACKWARD 12 mm (knee bends), toes tilt down"
   left_ankle:              "left TOES go DOWN 5.7 deg"
   right_ankle:             "right TOES go DOWN 5.7 deg"
 
