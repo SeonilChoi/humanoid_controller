@@ -64,6 +64,13 @@ private:
 
     std::array<double, 12> default_pose_{};   // first reference frame, policy order
 
+    // robot.yaml policy.observation: "amp" (116-D ArtiH1AmpEnv layout, default) or "velocity" (45-D
+    // ArtiH1VelocityEnv layout: pelvis gyro 3, gravity in pelvis frame 3, joint pos - default 12, joint vel 12,
+    // previous actions 12, command 3). Fixed at construction; observation_size_ follows it.
+    bool velocity_obs_{false};
+
+    std::size_t observation_size_{116};
+
     std::array<double, 12> policy_kp_{};      // motor.yaml kp / kd, driver units, motor index order
 
     std::array<double, 12> policy_kd_{};

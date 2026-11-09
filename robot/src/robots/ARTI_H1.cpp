@@ -28,6 +28,9 @@ constexpr std::size_t NUM_JOINTS = 12;
 // root tan-norm 6, angular velocity 3, joint tan-norm 72, joint velocity 12, toes 6, previous actions 12,
 // gait phase sin/cos 2, commands 3 (ArtiH1AmpEnv._get_observations).
 constexpr std::size_t OBSERVATION_SIZE = 116;
+// ArtiH1VelocityEnv._get_observations: gyro 3, gravity 3, joint pos - default 12, joint vel 12, previous actions 12,
+// command 3 (robot.yaml policy.observation: velocity).
+constexpr std::size_t VELOCITY_OBSERVATION_SIZE = 45;
 constexpr auto STAND_UP_TIME = std::chrono::seconds(3);
 constexpr double PI = 3.14159265358979323846;
 
@@ -117,6 +120,16 @@ robot::ArtiH1::ArtiH1(const std::string& config_file, const std::string& model_f
     const YAML::Node policy = YAML::LoadFile(config_file)["policy"];
     if (!policy) throw std::runtime_error("[ArtiH1::ArtiH1] robot.yaml has no 'policy' section.");
     default_pose_ = read_array<NUM_JOINTS>(policy, "default_pose");
+    if (policy["observation"]) {
+        const auto type = policy["observation"].as<std::string>();
+        if (type == "velocity") {
+            velocity_obs_ = true;
+        } else if (type != "amp") {
+            throw std::runtime_error("[ArtiH1::ArtiH1] robot.yaml policy.observation must be 'amp' or 'velocity'.");
+        }
+    }
+    observation_size_ = velocity_obs_ ? VELOCITY_OBSERVATION_SIZE : OBSERVATION_SIZE;
+    std::cout << "[ArtiH1] observation: " << (velocity_obs_ ? "velocity (45)" : "amp (116)") << std::endl;
     // Walking PD gains: motor.yaml 'kp' / 'kd' per motor (driver units, the real robot gains).
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         policy_kp_[i] = motor_manager_->gains(static_cast<uint8_t>(i)).kp;
@@ -156,7 +169,7 @@ robot::ArtiH1::ArtiH1(const std::string& config_file, const std::string& model_f
             std::cerr << "[ArtiH1] Cannot open log file " << path << ", logging disabled." << std::endl;
         } else {
             std::fprintf(log_file_, "t,phase");
-            for (std::size_t i = 0; i < OBSERVATION_SIZE; ++i) std::fprintf(log_file_, ",obs_%zu", i);
+            for (std::size_t i = 0; i < observation_size_; ++i) std::fprintf(log_file_, ",obs_%zu", i);
             for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",q_des_%s", name);
             for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",action_%s", name);
             for (const char* name : kPolicyJointNames) {
@@ -191,9 +204,25 @@ robot::ArtiH1::~ArtiH1() {
 }
 
 void robot::ArtiH1::print_observation() const {
-    if (observation_.size() != OBSERVATION_SIZE) return;
     const auto& o = observation_;
     constexpr double DEG = 180.0 / PI;
+    if (velocity_obs_) {
+        if (o.size() != VELOCITY_OBSERVATION_SIZE) return;
+        // [3:6] = gravity direction in the pelvis frame: (0, 0, -1) when level
+        const double roll = std::atan2(o[4], -o[5]) * DEG;    // + = right side down
+        const double pitch = std::atan2(-o[3], -o[5]) * DEG;  // + = nose down
+        std::printf("\n[observe] pelvis roll %+6.2f deg  pitch %+6.2f deg  | gravity (%+.3f %+.3f %+.3f)  gyro (%+.3f %+.3f %+.3f) rad/s\n",
+                    roll, pitch, o[3], o[4], o[5], o[0], o[1], o[2]);
+        std::printf("[observe] joint               pos-default(deg)  vel(rad/s)  prev action\n");
+        for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+            std::printf("[observe]   %-18s %+8.2f          %+7.3f     %+.3f\n", kPolicyJointNames[i], o[6 + i] * DEG,
+                        o[18 + i], o[30 + i]);
+        }
+        std::printf("[observe] command (%+.4f %+.4f %+.4f)\n", o[42], o[43], o[44]);
+        std::fflush(stdout);
+        return;
+    }
+    if (o.size() != OBSERVATION_SIZE) return;
     // [0:6] = heading-frame root x axis (tan) and z axis (norm): body z in the heading frame gives roll / pitch
     const double roll = std::atan2(-o[4], o[5]) * DEG;   // + = right side down (x forward, y left, z up)
     const double pitch = std::atan2(o[3], o[5]) * DEG;   // + = nose down
@@ -532,7 +561,7 @@ Eigen::Quaterniond robot::ArtiH1::update_attitude(const sensor_interface::imu_da
 
 void robot::ArtiH1::observation() {
     observation_.clear();
-    observation_.reserve(OBSERVATION_SIZE);
+    observation_.reserve(observation_size_);
 
     motor_interface::motor_state_t motor_status[NUM_JOINTS]{};
     motor_manager_->read(motor_status);
@@ -618,6 +647,33 @@ void robot::ArtiH1::observation() {
 
     const Eigen::Vector3d angular_velocity_heading =
         blind_imu_ ? Eigen::Vector3d(Eigen::Vector3d::Zero()) : Eigen::Vector3d(heading_R_world * angular_velocity_world);
+
+    if (velocity_obs_) {
+        // ArtiH1VelocityEnv: the sim IMU sits on the pelvis with identity orientation, so its gyro and gravity are in
+        // the pelvis frame (root_R_imu maps the real sensor axes onto it).
+        const Eigen::Vector3d gyro_root =
+            blind_imu_ ? Eigen::Vector3d(Eigen::Vector3d::Zero()) : Eigen::Vector3d(root_R_imu * angular_velocity_imu);
+        // gravity direction in the pelvis frame; heading_R_root has the same tilt as world_R_root (heading is about z)
+        const Eigen::Vector3d gravity_root = heading_R_root.transpose() * Eigen::Vector3d(0.0, 0.0, -1.0);
+        append_vector(gyro_root, observation_);                       // [0:3]
+        append_vector(gravity_root, observation_);                    // [3:6]
+        for (std::size_t i = 0; i < NUM_JOINTS; ++i) {                // [6:18] joint pos - default pose, policy order
+            const auto joint_id = kinematics_->joint_id(kPolicyJointNames[i]);
+            observation_.push_back(motor_status[joint_id_to_motor_index_.at(joint_id)].position - default_pose_[i]);
+        }
+        for (const char* name : kPolicyJointNames) {                  // [18:30] joint velocities
+            const auto joint_id = kinematics_->joint_id(name);
+            observation_.push_back(motor_status[joint_id_to_motor_index_.at(joint_id)].velocity);
+        }
+        for (const double action : previous_actions_) observation_.push_back(action);   // [30:42]
+        joy_interface::joy_data_t joy_data{};
+        joy_handler_->read(joy_data);
+        const auto dead = [this](double v) { return std::abs(v) < stick_deadzone_ ? 0.0 : v; };
+        command_ = {dead(joy_data.stick_ly) * command_max_[0], -dead(joy_data.stick_lx) * command_max_[1],
+                    -dead(joy_data.stick_rx) * command_max_[2]};
+        for (std::size_t i = 0; i < 3; ++i) observation_.push_back(command_[i] * command_scale_[i]);   // [42:45]
+        return;
+    }
 
     // heading rotation [0:6]
     append_rotation(heading_R_root, observation_);

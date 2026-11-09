@@ -156,9 +156,16 @@ cd ~/humanoid_controller/build
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml                 # AMP policy (robot.yaml model_file)
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --ppo           # RL-only PPO policy (robot.yaml ppo_model_file)
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --model ../config/robot/ARTI-H1/agent_s2r_340000.onnx   # any other ONNX
+./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml        # velocity-command policy (45-D obs, no gait clock)
 ```
 `--ppo` / `--model` combine with `--blind-imu` and `--observe`. With `--ppo` / `--model` the log file name includes
 the model name, so AMP and PPO runs stay apart.
+
+`robot_velocity.yaml` sets `policy.observation: velocity`: the 45-D `ArtiH1VelocityEnv` observation (pelvis gyro,
+gravity in the pelvis frame, joint pos - default pose, joint vel, previous actions, raw command) instead of the 116-D AMP
+one, and full stick = vx 0.15 m/s, vy 0.08 m/s, yaw 0.4 rad/s. A released stick (zero command) stands still.
+`--observe` prints the velocity observation in that mode. Do not use `--model` with a velocity ONNX on `robot.yaml`
+(the AMP layout would be fed to it; the ONNX input size check stops it).
 
 ## Troubleshooting
 
