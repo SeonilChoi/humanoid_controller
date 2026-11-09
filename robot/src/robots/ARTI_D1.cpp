@@ -60,6 +60,30 @@ constexpr const char* kPolicyJointNames[NUM_JOINTS] = {
     "right_ankle",
 };
 
+// policy.type vel (arti_d1 ArtiD1VelEnv._get_observations, actor part): pelvis angular velocity (pelvis frame) 3,
+// projected gravity (pelvis frame) 3, leg joint position - default pose 10, leg joint velocity 10, previous actions 10,
+// command (vx m/s, vy m/s, yaw rate rad/s, unscaled) 3. Legs = policy order without the arms.
+constexpr std::size_t VEL_NUM_LEGS = 10;
+constexpr std::size_t VEL_OBS_GRAVITY = 3;
+constexpr std::size_t VEL_OBS_JOINT_POS = 6;
+constexpr std::size_t VEL_OBS_JOINT_VEL = VEL_OBS_JOINT_POS + VEL_NUM_LEGS;   // 16
+constexpr std::size_t VEL_OBS_ACTIONS = VEL_OBS_JOINT_VEL + VEL_NUM_LEGS;     // 26
+constexpr std::size_t VEL_OBS_COMMAND = VEL_OBS_ACTIONS + VEL_NUM_LEGS;       // 36
+constexpr std::size_t VEL_OBSERVATION_SIZE = VEL_OBS_COMMAND + 3;             // 39
+
+constexpr const char* kVelLegNames[VEL_NUM_LEGS] = {
+    "left_hip_yaw",
+    "right_hip_yaw",
+    "left_hip_roll",
+    "right_hip_roll",
+    "left_hip_pitch",
+    "right_hip_pitch",
+    "left_knee",
+    "right_knee",
+    "left_ankle",
+    "right_ankle",
+};
+
 void append_vector(const Eigen::Vector3d& value, std::vector<double>& vector) {
     vector.push_back(value.x());
     vector.push_back(value.y());
@@ -128,6 +152,19 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
 
     const YAML::Node policy = YAML::LoadFile(config_file)["policy"];
     if (!policy) throw std::runtime_error("[ArtiD1::ArtiD1] robot.yaml has no 'policy' section.");
+    const std::string policy_type = policy["type"] ? policy["type"].as<std::string>() : "amp";
+    if (policy_type != "amp" && policy_type != "vel") {
+        throw std::runtime_error("[ArtiD1] robot.yaml policy.type must be amp or vel, got " + policy_type);
+    }
+    vel_policy_ = policy_type == "vel";
+    for (std::size_t k = 0; k < VEL_NUM_LEGS; ++k) {
+        vel_leg_index_[k] = static_cast<std::size_t>(
+            std::find_if(std::begin(kPolicyJointNames), std::end(kPolicyJointNames),
+                         [&](const char* n) { return std::string(n) == kVelLegNames[k]; }) - std::begin(kPolicyJointNames));
+    }
+    previous_actions_.assign(vel_policy_ ? VEL_NUM_LEGS : NUM_JOINTS, 0.0);
+    std::cout << "[ArtiD1] policy type " << policy_type << " (observation " << observation_size() << ", actions "
+              << previous_actions_.size() << ")" << std::endl;
     default_pose_ = read_array<NUM_JOINTS>(policy, "default_pose");
     if (policy["home_pose"]) {
         home_pose_ = read_array<NUM_JOINTS>(policy, "home_pose");
@@ -155,10 +192,12 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
         policy_kp_[i] = motor_manager_->gains(static_cast<uint8_t>(i)).kp;
         policy_kd_[i] = motor_manager_->gains(static_cast<uint8_t>(i)).kd;
     }
-    command_scale_ = read_array<3>(policy, "command_scale");
     command_max_ = read_array<3>(policy, "command_max");
-    gait_phase_rate_ = policy["gait_phase_rate"].as<double>();
     control_dt_ = policy["control_dt"].as<double>();
+    if (!vel_policy_) {
+        command_scale_ = read_array<3>(policy, "command_scale");
+        gait_phase_rate_ = policy["gait_phase_rate"].as<double>();
+    }
     if (policy["initial_gait_phase"]) initial_gait_phase_ = policy["initial_gait_phase"].as<double>();
     if (policy["max_tilt"]) max_tilt_ = policy["max_tilt"].as<double>();
     if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
@@ -177,9 +216,13 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
             std::cerr << "[ArtiD1] Cannot open log file " << path << ", logging disabled." << std::endl;
         } else {
             std::fprintf(log_file_, "t,phase");
-            for (std::size_t i = 0; i < OBSERVATION_SIZE; ++i) std::fprintf(log_file_, ",obs_%zu", i);
+            for (std::size_t i = 0; i < observation_size(); ++i) std::fprintf(log_file_, ",obs_%zu", i);
             for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",q_des_%s", name);
-            for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",action_%s", name);
+            if (vel_policy_) {
+                for (const char* name : kVelLegNames) std::fprintf(log_file_, ",action_%s", name);
+            } else {
+                for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",action_%s", name);
+            }
             for (const char* name : kPolicyJointNames) {
                 std::fprintf(log_file_, ",pos_%s,vel_%s,tau_%s,temp_%s", name, name, name, name);
             }
@@ -210,7 +253,39 @@ robot::ArtiD1::~ArtiD1() {
     }
 }
 
+std::size_t robot::ArtiD1::observation_size() const {
+    return vel_policy_ ? VEL_OBSERVATION_SIZE : OBSERVATION_SIZE;
+}
+
+void robot::ArtiD1::print_vel_observation() const {
+    if (observation_.size() != VEL_OBSERVATION_SIZE) return;
+    const auto& o = observation_;
+    constexpr double DEG = 180.0 / PI;
+    // projected gravity g = R^T (0, 0, -1): upright (0, 0, -1); g.x > 0 = nose down, g.y < 0 = right side down
+    const double* g = &o[VEL_OBS_GRAVITY];
+    const double roll = std::atan2(-g[1], -g[2]) * DEG;   // + = right side down (x forward, y left, z up)
+    const double pitch = std::atan2(g[0], -g[2]) * DEG;   // + = nose down
+    std::printf("\n[observe] vel policy | roll %+6.2f deg  pitch %+6.2f deg  | gravity (%+.3f %+.3f %+.3f)\n",
+                roll, pitch, g[0], g[1], g[2]);
+    std::printf("[observe] ang vel pelvis frame (rad/s)  x %+6.3f  y %+6.3f  z %+6.3f\n", o[0], o[1], o[2]);
+    std::printf("[observe] joint               URDF(deg)   obs q-default(deg)  vel(rad/s)\n");
+    for (std::size_t k = 0; k < VEL_NUM_LEGS; ++k) {
+        const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kVelLegNames[k]));
+        std::printf("[observe]   %-18s %+8.2f      %+8.2f          %+7.3f\n", kVelLegNames[k],
+                    last_joint_status_[motor_index].position * DEG, o[VEL_OBS_JOINT_POS + k] * DEG,
+                    o[VEL_OBS_JOINT_VEL + k]);
+    }
+    std::printf("[observe] command (vx %+.3f m/s, vy %+.3f m/s, yaw %+.3f rad/s) | imu q (%+.3f %+.3f %+.3f %+.3f)\n",
+                o[VEL_OBS_COMMAND], o[VEL_OBS_COMMAND + 1], o[VEL_OBS_COMMAND + 2], last_imu_orientation_[0],
+                last_imu_orientation_[1], last_imu_orientation_[2], last_imu_orientation_[3]);
+    std::fflush(stdout);
+}
+
 void robot::ArtiD1::print_observation() const {
+    if (vel_policy_) {
+        print_vel_observation();
+        return;
+    }
     if (observation_.size() != OBSERVATION_SIZE) return;
     const auto& o = observation_;
     constexpr double DEG = 180.0 / PI;
@@ -262,8 +337,8 @@ void robot::ArtiD1::write_log_row() {
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         if (policy_ran) std::fprintf(log_file_, ",%.7g", action_[i]); else std::fprintf(log_file_, ",nan");
     }
-    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
-        if (policy_ran) std::fprintf(log_file_, ",%.7g", previous_actions_[i]); else std::fprintf(log_file_, ",nan");
+    for (const double a : previous_actions_) {
+        if (policy_ran) std::fprintf(log_file_, ",%.7g", a); else std::fprintf(log_file_, ",nan");
     }
     for (const char* name : kPolicyJointNames) {
         const auto& s = last_joint_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))];
@@ -379,7 +454,16 @@ void robot::ArtiD1::initialize() {
         move(start, goal, "default pose (demo first frame)");
     }
     gait_phase_ = initial_gait_phase_;
-    previous_actions_.fill(0.0);
+    std::fill(previous_actions_.begin(), previous_actions_.end(), 0.0);
+}
+
+void robot::ArtiD1::read_command() {
+    joy_interface::joy_data_t joy_data{};
+    joy_handler_->read(joy_data);
+    // full stick = command_max; a released stick (inside the deadzone) gives exactly the zero (standing) command
+    const auto dead = [this](double v) { return std::abs(v) < stick_deadzone_ ? 0.0 : v; };
+    command_ = {dead(joy_data.stick_ly) * command_max_[0], -dead(joy_data.stick_lx) * command_max_[1],
+                -dead(joy_data.stick_rx) * command_max_[2]};
 }
 
 void robot::ArtiD1::observation() {
@@ -427,6 +511,28 @@ void robot::ArtiD1::observation() {
     const Eigen::Matrix3d root_R_imu = root_R_frame * frame_R_imu;
 
     const Eigen::Matrix3d world_R_root = world_R_imu * root_R_imu.transpose();
+
+    if (vel_policy_) {
+        // root = pelvis (URDF root link; the env reads pelvis body_ang_vel / body_quat)
+        const Eigen::Vector3d angular_velocity_root = root_R_imu * Eigen::Vector3d(
+            imu_data.angular_velocity[0], imu_data.angular_velocity[1], imu_data.angular_velocity[2]);
+        const Eigen::Vector3d gravity_root = world_R_root.transpose() * Eigen::Vector3d(0.0, 0.0, -1.0);
+        tilt_cos_ = -gravity_root.z();
+        append_vector(angular_velocity_root, observation_);   // [0:3]
+        append_vector(gravity_root, observation_);            // [3:6]
+        for (std::size_t k = 0; k < VEL_NUM_LEGS; ++k) {      // [6:16] q - default pose
+            const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kVelLegNames[k]));
+            observation_.push_back(last_joint_status_[motor_index].position - default_pose_[vel_leg_index_[k]]);
+        }
+        for (std::size_t k = 0; k < VEL_NUM_LEGS; ++k) {      // [16:26] joint velocity
+            const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kVelLegNames[k]));
+            observation_.push_back(last_joint_status_[motor_index].velocity);
+        }
+        for (const double a : previous_actions_) observation_.push_back(a);   // [26:36]
+        read_command();
+        for (const double c : command_) observation_.push_back(c);           // [36:39] unscaled
+        return;
+    }
 
     const double heading = std::atan2(world_R_root(1, 0), world_R_root(0, 0));
 
@@ -486,15 +592,10 @@ void robot::ArtiD1::observation() {
     observation_.push_back(std::sin(2.0 * PI * gait_phase_));
     observation_.push_back(std::cos(2.0 * PI * gait_phase_));
 
-    // read joy data
-    joy_interface::joy_data_t joy_data{};
-    joy_handler_->read(joy_data);
-
     // command [129:132] = command * command_scale, full stick = the training command range
-    const auto dead = [this](double v) { return std::abs(v) < stick_deadzone_ ? 0.0 : v; };
-    command_ = {dead(joy_data.stick_ly) * command_max_[0], -dead(joy_data.stick_lx) * command_max_[1],
-                -dead(joy_data.stick_rx) * command_max_[2]};
+    read_command();
     for (std::size_t i = 0; i < 3; ++i) observation_.push_back(command_[i] * command_scale_[i]);
+    tilt_cos_ = observation_[5];   // z of the pelvis z axis in the heading frame
 }
 
 void robot::ArtiD1::safe_stop(const std::string& reason) {
@@ -516,9 +617,9 @@ void robot::ArtiD1::control() {
     if (!motor_manager_->is_running()) {
         safe_stop("Motor communication stopped (see the [MotorManager::run] message above).");
     }
-    // observation_[5] = z of the pelvis z axis in the heading frame = cos(tilt)
-    if (!observation_.empty() && observation_[5] < std::cos(max_tilt_)) {
-        safe_stop("Pelvis tilt " + std::to_string(std::acos(std::clamp(observation_[5], -1.0, 1.0)) * 180.0 / PI) +
+    // tilt_cos_ = cos(pelvis tilt) from observation()
+    if (!observation_.empty() && tilt_cos_ < std::cos(max_tilt_)) {
+        safe_stop("Pelvis tilt " + std::to_string(std::acos(std::clamp(tilt_cos_, -1.0, 1.0)) * 180.0 / PI) +
                   " deg > max_tilt: fallen, joints damped.");
     }
     if (controller_ == nullptr) {
@@ -541,12 +642,19 @@ void robot::ArtiD1::control() {
         }
 
         const auto& actions = amp_controller_->policy_actions();
-        if (actions.size() != NUM_JOINTS) {
-            throw std::runtime_error("[ArtiD1::control] The ONNX model has no 'actions' output (needs pt_to_onnx.py export).");
+        if (actions.size() != previous_actions_.size()) {
+            throw std::runtime_error("[ArtiD1::control] The ONNX 'actions' output has " + std::to_string(actions.size()) +
+                                     " values, policy.type needs " + std::to_string(previous_actions_.size()) +
+                                     " (export with pt_to_onnx.py / vel/pt_to_onnx_vel.py).");
         }
         std::copy(actions.begin(), actions.end(), previous_actions_.begin());
 
         if (log_file_ != nullptr) write_log_row();
+
+        if (vel_policy_) {   // no gait clock
+            motor_manager_->write(motor_command_);
+            return;
+        }
 
         // the env advances the clock once per control step with the same standing rule (ArtiD1AmpEnv._advance_gait_phase)
         const double step = control_dt_ * gait_phase_rate_;

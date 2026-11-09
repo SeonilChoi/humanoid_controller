@@ -1,0 +1,93 @@
+name: robot
+
+motor_manager_config_file: ../config/robot/ARTI-D1/motor.yaml
+sensor_manager_config_file: ../config/robot/ARTI-D1/sensor.yaml
+joy_handler_config_file: ../config/robot/ARTI-D1/joy.yaml
+urdf_file: ../config/robot/ARTI-D1/robot.urdf
+# Velocity-walk policy (arti_d1 Template-Arti-D1-Vel-Direct-v0, microduck_rl port). Export:
+#   python scripts/vel/pt_to_onnx_vel.py --checkpoint <run>/checkpoints/agent_N.pt --output agent_vel.onnx
+# Check in sim: python scripts/vel/eval_vel.py --mode score --checkpoint agent_vel.onnx
+# agent_vel.onnx = arti_d1 v7 cont1 run 2026-11-07_08-49-37 agent_240000 (cumulative 720k steps; sim: fwd .055 / back
+# -.078 m/s, turn .306 rad/s, no sideways walking, 0/64 falls, stand-push 0/32). The AMP policy is robot.yaml.
+model_file: ../config/robot/ARTI-D1/agent_vel.onnx
+# Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
+# <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
+log_file: ./arti_d1_vel_run
+
+# Policy (Isaac Lab arti_d1 robot.data.joint_names) order. The Dynamixel ID of each joint is index + 1.
+# {side}_arm_m8crank_plate is passive on the real robot: its ID is the shoulder m7 servo, mapped by ARTI_D1_shoulder.
+motors:
+  - name: left_arm_m8
+    index: 0
+  - name: left_hip_yaw
+    index: 1
+  - name: right_arm_m8
+    index: 2
+  - name: right_hip_yaw
+    index: 3
+  - name: left_arm_m8crank_plate
+    index: 4
+  - name: left_hip_roll
+    index: 5
+  - name: right_arm_m8crank_plate
+    index: 6
+  - name: right_hip_roll
+    index: 7
+  - name: left_hip_pitch
+    index: 8
+  - name: right_hip_pitch
+    index: 9
+  - name: left_knee
+    index: 10
+  - name: right_knee
+    index: 11
+  - name: left_ankle
+    index: 12
+  - name: right_ankle
+    index: 13
+
+sensors:
+  - name: imu_body
+    index: 0
+    # Xsens MTi on the trunk frame (arti_d1_env_cfg.py ARTI_D1_IMU_OFFSET_FROM_PELVIS = trunk 0.00965 / 0 / 0.254045).
+    # Assumed mount: measure the real one and update both this and the training cfg.
+    frame: trunk
+    translation: [0.0, 0.0, 0.0]
+    orientation: [0.0, 0.0, 0.0, 1.0]
+
+# Sole centre in each foot link (ARTI_D1_*_FOOT_OFFSET_FROM_FOOT_LINK; the legs are mirrored in y).
+foots:
+  - name: left_foot_link
+    offset: [0.0135599213, -0.024, -0.0593316689]
+  - name: right_foot_link
+    offset: [0.0135599213, 0.024, -0.0593316765]
+
+# Policy settings; must match the training env (arti_d1 arti_d1_vel_env_cfg.py ArtiD1VelEnvCfg).
+# ONNX: input obs [1, 39] = pelvis angular velocity (pelvis frame) 3, projected gravity (pelvis frame) 3, leg joint
+# position - default_pose 10, leg joint velocity 10, previous "actions" 10, command (vx, vy m/s, yaw rate rad/s) 3.
+# Leg order: left/right hip_yaw, hip_roll, hip_pitch, knee, ankle (motor order without the arms).
+# Outputs "actions" [1, 10] (fed back) and "q_des" [1, 14] (motor order: default + 0.5 * action on the legs, clamped
+# to the URDF limits; arms 0). No gait clock: a zero command = stand still.
+# Dynamixel position-mode model as in the AMP task (motor.yaml kp / kd); if they change, retrain.
+policy:
+  type: vel
+  control_dt: 0.0166666667   # 60 Hz (env decimation 4 at 240 Hz)
+  # Pelvis tilt (rad) that counts as a fall: the policy stops and every servo gets Position P Gain 0.
+  max_tilt: 0.7
+  # |stick| below this is 0, so a released stick gives exactly the zero (standing) command.
+  stick_deadzone: 0.1
+  # Command at full stick (vx m/s, vy m/s, yaw rate rad/s). Training ranges: vx -0.12 .. 0.15, vy +-0.08, yaw +-0.4.
+  # First real tests: vx 0.10, vy 0 (the policy never learned sideways walking: sim vy -0.01 at a 0.06 command),
+  # yaw 0.3 (sim tracks 0.306 at 0.3). Raise toward the training ranges once it walks.
+  command_max: [0.10, 0.0, 0.3]
+  # Start: measured pose -> home_pose (1 s) -> default_pose -> wait -> policy. home_pose = the real servo zero.
+  home_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.15, 0.0, -0.15, -0.632508, -0.632508, 1.373575, 1.373575, -0.741067, -0.741067]
+  # Arms ignore q_des and hold 0 (= the training arm_hold_target).
+  fixed_joints:
+    left_arm_m8: 0.0
+    right_arm_m8: 0.0
+    left_arm_m8crank_plate: 0.0
+    right_arm_m8crank_plate: 0.0
+  # Training default pose (params/env.yaml init_state.joint_pos, arms = arm_hold_target 0), motor order. The leg
+  # observation is q - default_pose; the policy starts here.
+  default_pose: [0.0, 0.0, 0.0, 0.0, 0.0, -0.02466, 0.0, 0.02466, -0.00293, -0.00293, 0.07136, 0.07136, -0.06844, -0.06844]

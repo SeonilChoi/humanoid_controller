@@ -6,8 +6,6 @@
 
 namespace {
 
-const std::size_t ACTION_SIZE = 12;
-
 std::size_t shape_size(std::vector<int64_t>& shape) {
     std::size_t n = 1;
     for (auto& d : shape) {
@@ -32,6 +30,7 @@ struct controller::AmpController::Impl {
     std::string actions_name;      // raw actions, empty if the model has a single output
     std::vector<int64_t> input_shape;
     std::vector<int64_t> output_shape;
+    std::size_t actions_size{0};   // "actions" output length (14 amp, 10 vel), 0 without that output
     std::vector<float> input;
     std::vector<float> output;
 };
@@ -75,6 +74,8 @@ void controller::AmpController::initialize() {
             output_index = i;
         } else if (value == "actions") {
             impl_->actions_name = value;
+            auto shape = impl_->session->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
+            impl_->actions_size = shape_size(shape);
         }
     }
     const auto output_name = impl_->session->GetOutputNameAllocated(output_index, allocator);
@@ -140,7 +141,7 @@ void controller::AmpController::update(const std::vector<double>& observation, s
     policy_actions_.clear();
     if (n_outputs == 2) {
         const float* raw = output_tensors[1].GetTensorData<float>();
-        policy_actions_.resize(impl_->output.size());
+        policy_actions_.resize(impl_->actions_size);
         for (std::size_t i = 0; i < policy_actions_.size(); ++i) {
             policy_actions_[i] = static_cast<double>(raw[i]);
         }

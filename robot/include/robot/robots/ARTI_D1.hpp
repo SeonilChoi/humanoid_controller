@@ -89,7 +89,23 @@ private:
 
     std::array<double, 3> command_{};           // last command (vx m/s, vy m/s, yaw rate rad/s)
 
-    std::array<double, 14> previous_actions_{};
+    // robot.yaml policy.type: "amp" (default; 132-dim obs, gait clock, 14 actions) or "vel" (arti_d1
+    // Template-Arti-D1-Vel-Direct-v0, exported with scripts/vel/pt_to_onnx_vel.py: 39-dim obs, 10 leg actions, no clock).
+    bool vel_policy_{false};
+
+    // vel: policy order index (kPolicyJointNames) of each leg joint in the vel observation / action order
+    std::array<std::size_t, 10> vel_leg_index_{};
+
+    // cos(pelvis tilt) from the last observation(); control() stops the policy below cos(max_tilt)
+    double tilt_cos_{1.0};
+
+    // raw ONNX "actions" of the last step, fed back as the previous-actions observation (14 amp, 10 vel)
+    std::vector<double> previous_actions_;
+
+    std::size_t observation_size() const;
+
+    // joystick -> command_ (deadzone, full stick = command_max)
+    void read_command();
 
     // Runtime log (robot.yaml 'log_file', empty = off): one CSV row per control step with the observation, the ONNX
     // outputs, the motor states and the raw IMU, so a real run can be replayed / compared with the simulator.
@@ -120,6 +136,8 @@ private:
     std::array<double, 3> last_imu_angular_velocity_{};
 
     void write_log_row();
+
+    void print_vel_observation() const;
 
     // Position P Gain 0 on every servo (only the motor.yaml D gain acts), then throw: used when the robot falls or
     // the motor link dies.
