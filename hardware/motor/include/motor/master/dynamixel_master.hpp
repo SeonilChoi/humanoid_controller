@@ -3,7 +3,9 @@
 
 #include <cerrno>
 #include <climits>
+#include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -132,6 +134,7 @@ public:
     }
 
     virtual void update(const motor_interface::motor_command_t* commands, motor_interface::motor_state_t* status) override {
+        const auto t_begin = std::chrono::steady_clock::now();
         write_gains(commands);
 
         uint8_t data[4 + motor_interface::MAX_MOTORS * (1 + TX_DATA_SIZE)]{};
@@ -162,11 +165,14 @@ public:
 
         tx_size = make_packet(tx, sizeof(tx), BROADCAST_ID, INST_SYNC_READ, data, 4 + n_ids_);
         ::tcflush(fd_, TCIOFLUSH);
+        const auto t_write = std::chrono::steady_clock::now();
         send_packet(tx, tx_size);
+        const auto t_read_sent = std::chrono::steady_clock::now();
 
         for (uint8_t i = 0; i < n_ids_; ++i) {
             uint8_t rx[MAX_PACKET_SIZE]{};
             receive_packet(rx, sizeof(rx));
+            if (i == 0) timing_first_reply_ += seconds_since(t_read_sent);
 
             const uint8_t id = rx[4];
             const uint8_t error = rx[8];
@@ -182,9 +188,52 @@ public:
             drivers_.at(id)->decode(rx + 9, RX_DATA_SIZE, status[idx]);
             status[idx].error = error;
         }
+        report_timing(t_begin, t_write, t_read_sent);
     }
 
 private:
+    // DXL_TIMING=1 in the environment: every 5 s print the mean / max time of one update() (goal sync write + state
+    // sync read of every servo) and its parts, to find where a bus cycle longer than the period goes.
+    static double seconds_since(std::chrono::steady_clock::time_point t) {
+        return std::chrono::duration<double>(std::chrono::steady_clock::now() - t).count();
+    }
+
+    void report_timing(std::chrono::steady_clock::time_point t_begin, std::chrono::steady_clock::time_point t_write,
+                       std::chrono::steady_clock::time_point t_read_sent) {
+        static const bool enabled = std::getenv("DXL_TIMING") != nullptr;
+        if (!enabled) return;
+        const double total = seconds_since(t_begin);
+        timing_total_ += total;
+        timing_max_ = std::max(timing_max_, total);
+        timing_write_ += std::chrono::duration<double>(t_write - t_begin).count();
+        timing_send_read_ += std::chrono::duration<double>(t_read_sent - t_write).count();
+        timing_gap_ += timing_last_end_.time_since_epoch().count() == 0
+                           ? 0.0 : std::chrono::duration<double>(t_begin - timing_last_end_).count();
+        timing_last_end_ = std::chrono::steady_clock::now();
+        ++timing_count_;
+        if (timing_report_.time_since_epoch().count() == 0) timing_report_ = timing_last_end_;
+        if (std::chrono::duration<double>(timing_last_end_ - timing_report_).count() >= 5.0) {
+            const double n = static_cast<double>(timing_count_);
+            std::fprintf(stderr, "[DynamixelMaster timing] %s: %zu cycles in %.1f s (%.1f Hz) | update mean %.2f ms max "
+                         "%.2f ms | goal write %.2f ms, read request %.2f ms, first reply %.2f ms, all %d replies %.2f ms "
+                         "| idle between updates %.2f ms\n",
+                         device_.c_str(), timing_count_,
+                         std::chrono::duration<double>(timing_last_end_ - timing_report_).count(),
+                         n / std::chrono::duration<double>(timing_last_end_ - timing_report_).count(),
+                         1e3 * timing_total_ / n, 1e3 * timing_max_, 1e3 * timing_write_ / n, 1e3 * timing_send_read_ / n,
+                         1e3 * timing_first_reply_ / n, static_cast<int>(n_ids_),
+                         1e3 * (timing_total_ - timing_write_ - timing_send_read_) / n, 1e3 * timing_gap_ / n);
+            timing_total_ = timing_max_ = timing_write_ = timing_send_read_ = timing_first_reply_ = timing_gap_ = 0.0;
+            timing_count_ = 0;
+            timing_report_ = timing_last_end_;
+        }
+    }
+
+    double timing_total_{0.0}, timing_max_{0.0}, timing_write_{0.0}, timing_send_read_{0.0}, timing_first_reply_{0.0};
+    double timing_gap_{0.0};
+    std::size_t timing_count_{0};
+    std::chrono::steady_clock::time_point timing_last_end_{}, timing_report_{};
+
     // motor_command_t kp / kd = Position P / D Gain register values: sync-written only when they change (kp 0 = no
     // position control, the servo only follows the D term), so the policy loop normally sends goal positions only.
     void write_gains(const motor_interface::motor_command_t* commands) {
