@@ -205,6 +205,17 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
     if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
     if (policy["stand_command_threshold"]) stand_command_threshold_ = policy["stand_command_threshold"].as<double>();
     if (policy["stick_deadzone"]) stick_deadzone_ = policy["stick_deadzone"].as<double>();
+    if (policy["deadman_button"]) {
+        deadman_button_ = policy["deadman_button"].as<std::string>();
+        static const char* kButtons[] = {"l1", "r1", "l2", "r2", "cross", "circle", "square", "triangle"};
+        if (!deadman_button_.empty() && std::none_of(std::begin(kButtons), std::end(kButtons),
+                                                     [&](const char* b) { return deadman_button_ == b; })) {
+            throw std::runtime_error("[ArtiD1] robot.yaml policy.deadman_button: unknown button " + deadman_button_);
+        }
+        if (!deadman_button_.empty()) {
+            std::cout << "[ArtiD1] dead-man button " << deadman_button_ << ": hold it to move, release = stand" << std::endl;
+        }
+    }
 
     const YAML::Node log_file = YAML::LoadFile(config_file)["log_file"];
     if (log_file && !log_file.as<std::string>().empty()) {
@@ -465,6 +476,28 @@ void robot::ArtiD1::initialize() {
 void robot::ArtiD1::read_command() {
     joy_interface::joy_data_t joy_data{};
     joy_handler_->read(joy_data);
+    // joystick gone (unplugged / wireless link lost): never keep the last command, stand still
+    if (!joy_handler_->connected()) {
+        if (!joy_lost_) std::cerr << "[ArtiD1] joystick disconnected: zero command (standing)" << std::endl;
+        joy_lost_ = true;
+        command_ = {0.0, 0.0, 0.0};
+        return;
+    }
+    if (joy_lost_) std::cerr << "[ArtiD1] joystick back" << std::endl;
+    joy_lost_ = false;
+    if (!deadman_button_.empty()) {
+        const bool held = deadman_button_ == "l1" ? joy_data.l1 : deadman_button_ == "r1" ? joy_data.r1
+                        : deadman_button_ == "l2" ? joy_data.l2 : deadman_button_ == "r2" ? joy_data.r2
+                        : deadman_button_ == "cross" ? joy_data.cross : deadman_button_ == "circle" ? joy_data.circle
+                        : deadman_button_ == "square" ? joy_data.square : joy_data.triangle;
+        if (!held) {
+            if (!deadman_released_) std::cout << "[ArtiD1] dead-man released: zero command (standing)" << std::endl;
+            deadman_released_ = true;
+            command_ = {0.0, 0.0, 0.0};
+            return;
+        }
+        deadman_released_ = false;
+    }
     // full stick = command_max; a released stick (inside the deadzone) gives exactly the zero (standing) command
     const auto dead = [this](double v) { return std::abs(v) < stick_deadzone_ ? 0.0 : v; };
     command_ = {dead(joy_data.stick_ly) * command_max_[0], -dead(joy_data.stick_lx) * command_max_[1],

@@ -29,6 +29,9 @@ public:
 
     void read(joy_interface::joy_data_t& data);
 
+    // false when the device is gone or the reader thread stopped on an error (read() is then all zero)
+    bool connected() const { return !failed_.load() && joy_ && joy_->connected(); }
+
 private:
     void load(const std::string& config_file);
 
@@ -37,6 +40,8 @@ private:
     std::unique_ptr<joy_interface::Joy> joy_;
 
     std::atomic<bool> running_{false};
+
+    std::atomic<bool> failed_{false};
 
     std::thread thread_;
 };

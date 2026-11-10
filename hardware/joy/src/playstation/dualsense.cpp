@@ -1,4 +1,6 @@
 #include <fcntl.h>
+#include <cstring>
+#include <iostream>
 #include <errno.h>
 #include <unistd.h>
 #include <linux/joystick.h>
@@ -20,18 +22,51 @@ void playstation::DualSense::initialize() {
     fd_ = open(device_.c_str(), O_RDONLY | O_NONBLOCK);
     if (fd_ < 0) throw std::runtime_error("[DualSense::initialize] Failed to open device: " + device_);
 
+    connected_.store(true);
     initialized_ = true;
+}
+
+void playstation::DualSense::disconnect(const char* reason) {
+    if (fd_ >= 0) {
+        ::close(fd_);
+        fd_ = -1;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        data_ = joy_interface::joy_data_t{};
+    }
+    if (connected_.exchange(false)) {
+        std::cerr << "[DualSense] " << device_ << " lost (" << reason << "): all inputs zero, reconnecting" << std::endl;
+    }
+    next_retry_ = std::chrono::steady_clock::now() + std::chrono::seconds(1);
 }
 
 void playstation::DualSense::update() {
     if (!initialized_) return;
+
+    if (fd_ < 0) {  // lost: retry once a second; the joystick driver replays the current state on open (JS_EVENT_INIT)
+        if (std::chrono::steady_clock::now() < next_retry_) return;
+        fd_ = open(device_.c_str(), O_RDONLY | O_NONBLOCK);
+        if (fd_ < 0) {
+            next_retry_ = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+            return;
+        }
+        connected_.store(true);
+        std::cerr << "[DualSense] " << device_ << " reconnected" << std::endl;
+    }
 
     js_event event{};
     while (true) {
         const ssize_t n = ::read(fd_, &event, sizeof(event));
         if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) break;
-            throw std::runtime_error("[DualSense::update] read failed.");
+            if (errno == EINTR) continue;
+            disconnect(std::strerror(errno));
+            return;
+        }
+        if (n == 0) {
+            disconnect("end of file");
+            return;
         }
         if (n != static_cast<ssize_t>(sizeof(event))) break;
 
@@ -96,5 +131,5 @@ void playstation::DualSense::shutdown() {
 
 void playstation::DualSense::read(joy_interface::joy_data_t& data) {
     std::lock_guard<std::mutex> lock(mutex_);
-    data = data_;
+    data = connected_.load() ? data_ : joy_interface::joy_data_t{};
 }

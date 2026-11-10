@@ -80,6 +80,9 @@ policy:
   max_tilt: 0.7
   # |stick| below this is 0, so a released stick gives exactly the zero (standing) command.
   stick_deadzone: 0.1
+  # Dead-man button: the sticks move the robot only while it is held; released = zero command (stand still). Also, if
+  # the joystick disconnects the command is zero until it is back. "" = no dead-man button.
+  deadman_button: l1
   # Command at full stick (vx m/s, vy m/s, yaw rate rad/s). Training ranges: vx -0.12 .. 0.15, vy +-0.08, yaw +-0.4.
   # First real tests: vx 0.10, vy 0 (the policy never learned sideways walking: sim vy -0.01 at a 0.06 command),
   # yaw 0.3 (sim tracks 0.306 at 0.3). Raise toward the training ranges once it walks.

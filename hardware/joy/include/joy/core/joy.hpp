@@ -22,6 +22,9 @@ public:
 
     virtual void read(joy_data_t& data) = 0;
 
+    // false while the device is gone (unplugged / wireless link lost); read() then returns all-zero data
+    virtual bool connected() const { return true; }
+
     const std::string device() const { return device_; }
 
     uint32_t period() const { return period_; }

@@ -108,8 +108,15 @@ private:
 
     std::size_t observation_size() const;
 
-    // joystick -> command_ (deadzone, full stick = command_max)
+    // joystick -> command_ (deadzone, full stick = command_max). Zero command (= stand still) while the joystick is
+    // disconnected, and while robot.yaml policy.deadman_button is set but not held.
     void read_command();
+
+    std::string deadman_button_;      // "" = off; else l1 / r1 / l2 / r2 / cross / circle / square / triangle
+
+    bool joy_lost_{false};            // last read_command saw the joystick disconnected (for the warning)
+
+    bool deadman_released_{true};     // last read_command had the dead-man button released (for the message)
 
     // Runtime log (robot.yaml 'log_file', empty = off): one CSV row per control step with the observation, the ONNX
     // outputs, the motor states and the raw IMU, so a real run can be replayed / compared with the simulator.

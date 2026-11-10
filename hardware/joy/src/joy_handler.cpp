@@ -40,6 +40,10 @@ void joy_handler::JoyHandler::stop() {
 }
 
 void joy_handler::JoyHandler::read(joy_interface::joy_data_t& data) {
+    if (failed_.load()) {
+        data = joy_interface::joy_data_t{};
+        return;
+    }
     joy_->read(data);
 }
 
@@ -75,7 +79,8 @@ void joy_handler::JoyHandler::run() {
         }
 
     } catch (const std::exception& e) {
-        std::cerr << "[JoyHandler::run] " << e.what() << std::endl;
+        std::cerr << "[JoyHandler::run] " << e.what() << " (joystick inputs are zero from now on)" << std::endl;
+        failed_.store(true);
         running_.store(false);
     }
 }

@@ -1,6 +1,8 @@
 #ifndef JOY_PLAYSTATION_DUALSENSE_HPP_
 #define JOY_PLAYSTATION_DUALSENSE_HPP_
 
+#include <atomic>
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <cstdint>
@@ -25,7 +27,16 @@ public:
 
     void read(joy_interface::joy_data_t& data) override;
 
+    bool connected() const override { return connected_.load(); }
+
 private:
+    // device lost: close it, zero the data, retry opening every second
+    void disconnect(const char* reason);
+
+    std::atomic<bool> connected_{false};
+
+    std::chrono::steady_clock::time_point next_retry_{};
+
     joy_interface::joy_data_t data_;
 
     int fd_{-1};
