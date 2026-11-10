@@ -1,0 +1,62 @@
+ARTI-D1 5단계 (걷기 재학습) 젯슨 설치 / 실험 절차  (2026-11-10 화)
+====================================================================================
+정책 (입력 134개, 3.5 / 4e 와 같은 형식, 게인 1600 motor_kp1600.yaml 그대로)
+  agent_stage5a.onnx  4e + 출력 필터 + 실측 서보 모델. 걸음 주기 / 스틱은 4e 와 같음      <- 먼저 시험
+                      시뮬: 출력 변화 0.028 (4f 0.058), 제자리 걸음 발 6 mm, 앞으로는 명령의 20%
+  agent_stage5b.onnx  5a + 느린 참고 동작 (발 16 mm, 주기 1.76 s). 걸음 주기가 다름           <- 두 번째
+                      시뮬: 가장 조용함 (출력 변화 0.024) 이지만 발을 거의 안 듦 (3 mm)
+새 C++ 가 필요해요: 정책 출력에 저역 필터 (학습과 같은 α 0.5). yaml 에 action_filter_alpha 가 없으면
+예전과 똑같이 동작해서 robot_stage35.yaml / robot_stage4.yaml 시연은 그대로 돼요.
+
+순서: [1] 복사 -> [2] C++ 빌드 -> [3] 5a 시험 -> [4] 5b 시험
+
+---------------------------------------------------------
+[1] 복사  (이 폴더를 ~/humanoid_controller/jetson_upload_stage4 에 복사했다고 가정)
+
+S=~/humanoid_controller/jetson_upload_stage4
+C=~/humanoid_controller/config/robot/ARTI-D1
+cp $S/ARTI-D1/agent_stage5*.onnx $S/ARTI-D1/robot_stage5*.yaml $C/
+sha256sum $C/agent_stage5a.onnx $C/agent_stage5b.onnx
+
+   앞 12글자가 50e23a3e87bd / 6ee96e1537c3 이면 정상
+
+---------------------------------------------------------
+[2] C++ 빌드 (출력 필터 추가)
+
+백업 (지금 젯슨에 있는 4단계 코드)
+cp ~/humanoid_controller/robot/src/robots/ARTI_D1.cpp ~/ARTI_D1.cpp.backup_stage5
+cp ~/humanoid_controller/robot/include/robot/robots/ARTI_D1.hpp ~/ARTI_D1.hpp.backup_stage5
+
+덮어쓰기 + 빌드
+cp $S/humanoid_controller_patch/robot/src/robots/ARTI_D1.cpp ~/humanoid_controller/robot/src/robots/
+cp $S/humanoid_controller_patch/robot/include/robot/robots/ARTI_D1.hpp ~/humanoid_controller/robot/include/robot/robots/
+cd ~/humanoid_controller/build && make -j4 2>&1 | tail -30
+
+   에러가 나면: 마지막 30줄을 보내 주시고, 아래로 되돌린 뒤 다시 빌드 (시연 [1]~[4] 는 그대로 돼요)
+cp ~/ARTI_D1.cpp.backup_stage5 ~/humanoid_controller/robot/src/robots/ARTI_D1.cpp
+cp ~/ARTI_D1.hpp.backup_stage5 ~/humanoid_controller/robot/include/robot/robots/ARTI_D1.hpp
+cd ~/humanoid_controller/build && make -j4
+
+---------------------------------------------------------
+[3] 5a 시험
+
+cd ~/humanoid_controller/build && ./ARTI-D1 ../config/robot/ARTI-D1/robot_stage5a.yaml
+
+   시작할 때 "[ArtiD1] q_des low-pass filter alpha 0.5" 가 나와야 해요 (안 나오면 빌드가 안 된 것 -> Ctrl+C)
+   컨트롤러는 4e 와 같아요 (✕ 제자리 걸음, 왼쪽 스틱 이동, 오른쪽 스틱 회전, Options 1/2, 팔 L1/R1/R2)
+
+   A. 10초 서 있기                      <- 떨림 / "윙" 소리 없는지
+   B. ✕ 제자리 걸음 20초 -> ✕ 끄기     <- 핵심: 걸음 시작할 때 3.5 보다 덜 떠는지, 발이 뜨는지
+   C. 제자리 걸음 중 왼쪽 스틱 앞으로 절반 10초 -> 끝까지 10초
+   D. 왼쪽 스틱 뒤로 10초 / 오른쪽 스틱 좌우 회전 각 10초
+   흔들리면 바로 ✕ 끄기, 넘어지면 Ctrl+C. 끝: Ctrl+C
+
+---------------------------------------------------------
+[4] 5b 시험 (걸음 주기가 1.76 초로 느려요)
+
+cd ~/humanoid_controller/build && ./ARTI-D1 ../config/robot/ARTI-D1/robot_stage5b.yaml
+
+   [3] 과 같은 A ~ D. 스틱 끝까지가 0.035 m/s (5a 0.045) 로 더 느림.
+
+---------------------------------------------------------
+보낼 것: build 폴더의 arti_d1_stage5a_run_*.csv, arti_d1_stage5b_run_*.csv, 영상 (옆에서, 발 보이게), 메모

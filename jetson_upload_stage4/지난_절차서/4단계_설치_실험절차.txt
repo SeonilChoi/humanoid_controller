@@ -1,0 +1,137 @@
+ARTI-D1 3.5단계 (다리) + 4단계 (팔 + 다리) 젯슨 설치 / 실험 절차  (2026-11-09 월)
+====================================================================================
+정책 (모두 입력 134개, 3단계 v2 와 같은 형식, 걸음 주기 / 스틱 / 버튼도 같음)
+  agent_stage35.onnx  3.5단계: 서 있을 때 발 10 cm 이상 벌리기, 무게중심 랜덤, 걷는 중 밀기   <- 먼저 시험
+  agent_stage4e.onnx  4단계 e: 3.5 + 팔 동작 (팔이 움직여도 균형, 걷기는 3.5 와 같음)      <- 팔 시험 (기본)
+  agent_stage4b.onnx  4단계 b: 4e 와 비슷하지만 토크 벌점 때문에 느림                       <- 4e 가 이상할 때 예비
+  agent_stage4d.onnx  4단계 d: 4b + 걷는 속도 강조 (왼쪽 회전 약함)                         <- 예비
+  agent_stage4f.onnx  4단계 f: 4e + 발 높이 들기 (30 mm, 4e 의 4배), 뒤꿈치부터 딛기          <- 마지막에 시험 (아래 [7])
+                      걷기/회전은 4e 보다 빠르지만 고관절 옆/무릎 토크를 4배 더 씀 (모터 온도 주의)
+모두 다리 서보 P 게인 1600 으로 학습 (팔은 800 그대로).
+  -> motor.yaml 은 건드리지 않고, 게인 1600 짜리 motor_kp1600.yaml 을 따로 만들어 새 yaml 이 그걸 써요.
+     예전 robot_stage3.yaml (v2) 는 계속 motor.yaml (800) 으로 돌아가요.
+
+순서: [1] 복사 -> [2] 게인 1600 파일 -> [3] 서 있기 확인 -> [4] 3.5 시험 (빌드 필요 없음)
+      -> [5] 새 C++ 빌드 -> [6] 4단계 팔 시험 -> [7] 4f 발 높이 시험 (시간 남으면)
+
+---------------------------------------------------------
+[1] 복사  (이 폴더를 ~/humanoid_controller/jetson_upload_stage4 에 복사했다고 가정)
+
+S=~/humanoid_controller/jetson_upload_stage4
+C=~/humanoid_controller/config/robot/ARTI-D1
+cp $S/ARTI-D1/*.onnx $S/ARTI-D1/robot_stage35.yaml $S/ARTI-D1/robot_stage4.yaml $C/
+sha256sum $C/agent_stage35.onnx $C/agent_stage4e.onnx $C/agent_stage4b.onnx $C/agent_stage4d.onnx $C/agent_stage4f.onnx
+
+   앞 12글자가 cedb157485e2 / 10cab0262580 / 5075775c4da7 / b58383560c73 / e2982dade2f2 이면 정상
+
+---------------------------------------------------------
+[2] 게인 1600 파일 만들기 (다리 ID 2,4,6,8~14 의 kp 800 -> 1600, 팔 ID 1,3,5,7 은 800)
+
+cd $C && awk '/- id:/{id=$3} /kp:/ && (id==2||id==4||id==6||id>=8){sub(/kp: *800/,"kp: 1600")} {print}' motor.yaml > motor_kp1600.yaml
+diff motor.yaml motor_kp1600.yaml | grep '^>' | wc -l
+grep -c 'kp: 1600' motor_kp1600.yaml
+
+   둘 다 10 이 나와야 해요 (다리 10개). 아니면 멈추고 diff 결과를 보내 주세요.
+
+---------------------------------------------------------
+[3] 게인 1600 서 있기 확인 (로봇을 매달거나 잡은 상태, 정책 없이 기본 자세만 버팀)
+
+cd ~/humanoid_controller/build && ./ARTI-D1 ../config/robot/ARTI-D1/robot_stage35.yaml --observe
+
+   - 기본 자세로 버티는지, 떨리거나 "윙" 소리가 나지 않는지 30초 보기
+   - 다리를 손으로 살짝 밀어서 단단해졌는지 (800 보다 덜 밀림) 느껴 보기
+   - 떨림 / 진동이 있으면 바로 Ctrl+C, 영상 찍어서 보내 주세요 (그러면 3.5 시험은 하지 않아요)
+   - 문제 없으면 Ctrl+C
+
+---------------------------------------------------------
+[4] 3.5단계 시험 (지금 젯슨에 있는 프로그램 그대로, 빌드 필요 없음)
+
+cd ~/humanoid_controller/build && ./ARTI-D1 ../config/robot/ARTI-D1/robot_stage35.yaml
+
+컨트롤러: 3단계와 같아요
+   ✕ 제자리 걸음 켜기/끄기 / 왼쪽 스틱 앞뒤·옆 / 오른쪽 스틱 좌우 회전
+   Options 1번: 멈추고 시작 자세로 / 2번: 다시 시작 / 넘어지면 힘 빠짐 -> 세워 들고 Options 2번 누르기
+   Ctrl+C 끝
+
+실험 (금요일과 같은 순서, 각 시험 메모)
+   A. 시작 후 10초 서 있기   <- 두 발이 벌어져 있는지 (금요일엔 겹쳤음), 앞에서 사진 1장
+   B. ✕ 제자리 걸음 20초 -> ✕ 끄기 (발이 실제로 뜨는지, 뒤로 기우는지)
+   C. 왼쪽 스틱 앞으로 절반 10초 -> 끝까지 10초
+   D. 왼쪽 스틱 뒤로 끝까지 10초  (시뮬레이션에서 3.5는 뒤로도 걸음, v2 는 못 했음)
+   E. 오른쪽 스틱 왼쪽 10초 / 오른쪽 10초 (회전, 시뮬레이션에서도 명령의 40% 정도로 약함)
+   F. 서 있을 때 살짝 앞 / 뒤 / 옆으로 밀기
+   (옆걸음은 시뮬레이션에서도 거의 안 돼서 빼도 돼요)
+   모터 온도: 끝나고 다리 모터를 손으로 만져서 뜨거운지 메모 (게인 1600 이라 전보다 더 쓸 수 있음)
+
+보낼 것: build 폴더의 arti_d1_stage35_run_*.csv, 영상 (옆에서, 발 높이 보이게), 메모
+
+---------------------------------------------------------
+[5] 새 C++ 빌드 (팔 동작 재생기 추가. 이 PC 에 컴파일러가 없어서 처음으로 빌드하는 거예요)
+
+백업 (지금 젯슨에 있는 3단계 코드)
+cp ~/humanoid_controller/robot/src/robots/ARTI_D1.cpp ~/ARTI_D1.cpp.backup_stage4
+cp ~/humanoid_controller/robot/include/robot/robots/ARTI_D1.hpp ~/ARTI_D1.hpp.backup_stage4
+
+덮어쓰기 + 빌드
+cp $S/humanoid_controller_patch/robot/src/robots/ARTI_D1.cpp ~/humanoid_controller/robot/src/robots/
+cp $S/humanoid_controller_patch/robot/include/robot/robots/ARTI_D1.hpp ~/humanoid_controller/robot/include/robot/robots/
+cd ~/humanoid_controller/build && make -j4 2>&1 | tail -30
+
+   에러가 나면: 마지막 30줄을 보내 주시고, 아래로 되돌린 뒤 다시 빌드하면 3단계 / 3.5 는 그대로 돼요
+cp ~/ARTI_D1.cpp.backup_stage4 ~/humanoid_controller/robot/src/robots/ARTI_D1.cpp
+cp ~/ARTI_D1.hpp.backup_stage4 ~/humanoid_controller/robot/include/robot/robots/ARTI_D1.hpp
+cd ~/humanoid_controller/build && make -j4
+
+   새 코드는 yaml 에 arms 가 없으면 예전과 똑같이 동작해요 (robot_stage3.yaml, robot_stage35.yaml)
+
+---------------------------------------------------------
+[6] 4단계 (팔 + 다리) 시험
+
+cd ~/humanoid_controller/build && ./ARTI-D1 ../config/robot/ARTI-D1/robot_stage4.yaml
+
+   시작할 때 "[ArtiD1] arms: motion player on" 과 버튼 6줄 (wave = l1 ...) 이 나와야 해요.
+
+팔 버튼 (정책이 돌 때만 동작, 서 있을 때도 걸을 때도 됨, 넘어지거나 Options 누르면 팔은 0 으로)
+   L1        손 흔들기 (오른팔 들고 흔들기) 켜기 / 끄기
+   R1        두 팔 들기 / 내리기 반복 켜기 / 끄기
+   L2        걸을 때 팔 흔들기 켜기 / 끄기
+   R2        팔 동작 전부 끄기 (팔 0 으로)
+   방향키 위/아래 (누르고 있기)  두 팔 앞으로 / 뒤로
+   오른쪽 스틱 위 (누르고 있기)   두 팔 들기 (많이 밀수록 높이)
+      주의: 오른쪽 스틱 좌우는 회전이에요. 위로만 밀어 주세요.
+
+먼저 매단 상태에서 버튼 확인
+   - L1 / R1 / L2 / R2 / 방향키를 하나씩 누르고 화면 메시지 (arms wave ON ...) 와 팔 움직임 확인
+   - 오른쪽 스틱을 위로 밀었는데 팔이 안 들리고 아래로 밀 때 들리면:
+     robot_stage4.yaml 의 raise_sign: -1.0 을 1.0 으로 바꾸기
+   - 다른 버튼이 반응하면 (버튼이 밀려 있으면) 어떤 버튼이 무엇을 했는지 메모해 주세요
+
+실험 (바닥에서, 잡을 준비)
+   A. 서서 L1 손 흔들기 10초 -> 끄기
+   B. 서서 R1 두 팔 들기/내리기 10초 -> 끄기
+   C. 서서 오른쪽 스틱 위로 천천히 -> 끝까지 -> 놓기
+   D. ✕ 제자리 걸음 + L2 팔 흔들기 20초
+   E. 앞으로 걸으면서 L1 손 흔들기
+   F. 3.5 와 비교: 서 있기 / 앞으로 / 뒤로 (팔 정책이 더 흔들리는지)
+   4e 가 3.5 보다 많이 흔들리거나 떨리면 robot_stage4.yaml 의 model_file 을 agent_stage4b.onnx 로 바꿔서 A~F 다시
+
+보낼 것: build 폴더의 arti_d1_stage4_run_*.csv, 영상, 메모 (어느 버튼이 무엇을 했는지 포함)
+
+---------------------------------------------------------
+[7] 4f 발 높이 시험 (시간이 남을 때, 4e 가 넘어지지 않고 걸었을 때만)
+
+먼저 다리 모터가 식었는지 손으로 확인 (뜨거우면 5분 쉬기)
+cd $C && sed 's/agent_stage4e.onnx/agent_stage4f.onnx/' robot_stage4.yaml > robot_stage4f.yaml
+grep model_file robot_stage4f.yaml        <- agent_stage4f.onnx 가 나와야 해요
+cd ~/humanoid_controller/build && ./ARTI-D1 ../config/robot/ARTI-D1/robot_stage4f.yaml
+
+실험 (짧게, 잡을 준비)
+   A. 10초 서 있기
+   B. ✕ 제자리 걸음 20초  <- 발이 4e 보다 확실히 높이 뜨는지, 뒤꿈치부터 닿는지 (옆에서 발 높이로 영상)
+      시뮬레이션에서 제자리 걸음 때 앞으로 1.4 cm/s 정도 조금씩 나가요
+   C. 왼쪽 스틱 앞으로 절반 10초 -> 끝까지 10초
+   D. 오른쪽 스틱 왼쪽 10초 / 오른쪽 10초
+   덜덜 떨거나 "윙" 소리, 모터가 뜨거워지면 바로 Ctrl+C (토크를 4e 보다 많이 써요)
+   끝나고 다리 모터 온도 메모 (특히 고관절 옆, 무릎)
+
+보낼 것: arti_d1_stage4_run_*.csv (4f 로 돌린 것이라고 메모), 옆에서 찍은 영상

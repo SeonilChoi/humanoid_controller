@@ -1,0 +1,66 @@
+ARTI-D1 4.5 / 4.6 실험 절차  (2026-11-09 다시 정리)
+====================================================================================
+목적
+  4.5: 시뮬레이션 서보를 실제 속도 (고관절 옆 2.0, 나머지 2.5 rad/s, 지연 45~75 ms) 로 낮춰 학습.
+       -> 제자리 걸음이 오전 (3.5, 4f) 보다 덜 떨면, "시뮬 서보가 실제보다 빨랐다" 가 떨림 원인으로 확정.
+  4.6: 4.5 + 속도 따라가기 2배, 발 들기 20 mm. 시뮬에서 앞으로 걸음 (0.048 m/s). 4.5 가 덜 떨 때만 시험.
+
+            앞 0.045   뒤 -0.03   회전           발 높이   토크 한계
+  4.5       0.004      -0.007     0.14           32 mm     2.7 %
+  4.6       0.048      -0.006     0.12 / -0.16   25 mm     2.5 %
+
+옮길 파일 (노트북 -> 젯슨 ~/humanoid_controller/jetson_upload_stage4/ARTI-D1/)
+  agent_stage45.onnx   sha 앞 12글자 5dde57091cb0
+  agent_stage46.onnx   sha 앞 12글자 8a7e6d5f85db
+
+---------------------------------------------------------
+[0] 새 터미널마다 먼저
+
+S=~/humanoid_controller/jetson_upload_stage4; C=~/humanoid_controller/config/robot/ARTI-D1
+
+---------------------------------------------------------
+[1] 복사 + 확인 + yaml 만들기 (한 번만)
+
+cp $S/ARTI-D1/agent_stage45.onnx $S/ARTI-D1/agent_stage46.onnx $C/
+sha256sum $C/agent_stage45.onnx $C/agent_stage46.onnx
+   -> 5dde57091cb0 / 8a7e6d5f85db 이면 정상
+
+cd $C && for p in 45 46; do sed "s/agent_stage4e.onnx/agent_stage$p.onnx/" robot_stage4.yaml > robot_stage$p.yaml; done
+grep -E 'model_file|stick_deadzone' $C/robot_stage45.yaml $C/robot_stage46.yaml
+   -> model_file 이 45 / 46, stick_deadzone 0.25 이면 정상. 0.1 이면:
+sed -i 's/stick_deadzone: 0.1/stick_deadzone: 0.25/' $C/robot_stage45.yaml $C/robot_stage46.yaml
+
+---------------------------------------------------------
+공통 규칙
+   - 넘어지거나 크게 흔들린 뒤에는 Options 말고 Ctrl+C 로 끄고 다시 실행 (IMU 값이 멈춘 적 있음)
+   - 잡을 준비, 시험마다 시작 시각 메모, 옆에서 발 높이가 보이게 영상
+   - 시험 사이 다리 모터 온도 손으로 확인
+
+---------------------------------------------------------
+[2] 4.5 (약 5~10분)
+
+cd ~/humanoid_controller/build && ./ARTI-D1 ../config/robot/ARTI-D1/robot_stage45.yaml
+
+   A. 20초 서 있기
+   B. ✕ 제자리 걸음 20초 -> ✕ 끄기       <- 가장 중요: 오전보다 덜 떠는지
+   C. 한 번 더 ✕ 제자리 걸음 20초 -> ✕ 끄기
+   D. (B, C 가 괜찮으면) ✕ 켜고 왼쪽 스틱 앞으로 절반 10초 -> 놓기 (안 나가도 정상)
+   E. (괜찮으면) 오른쪽 스틱 왼쪽 10초 -> 오른쪽 10초 -> ✕ 끄기
+   F. 10초 서 있기 -> Ctrl+C
+
+---------------------------------------------------------
+[3] 4.6 (4.5 제자리 걸음이 오전보다 덜 떨었을 때만, 약 10분)
+
+cd ~/humanoid_controller/build && ./ARTI-D1 ../config/robot/ARTI-D1/robot_stage46.yaml
+
+   A. 20초 서 있기
+   B. ✕ 제자리 걸음 20초 x 2번
+   C. ✕ 켜고 왼쪽 스틱 앞으로 절반 10초 -> 끝까지 10초 -> 놓기   <- 앞으로 실제로 나가는지
+   D. 오른쪽 스틱 왼쪽 10초 -> 오른쪽 10초 -> ✕ 끄기
+   E. 10초 서 있기 -> Ctrl+C
+
+---------------------------------------------------------
+보낼 것 (바탕화면 결과 폴더)
+   - arti_d1_stage4_run_*.csv (4.5 / 4.6 어느 것인지 순서 메모)
+   - 영상
+   - 메모: 떨림 정도 (오전과 비교), 넘어짐, 모터 온도
