@@ -1,0 +1,89 @@
+# Servo RESPONSE identification for ARTI-D1 (examples/src/hardware/motor/example_sysid.cpp), 2026-11-10.
+# Why: the velocity-walk policy shakes at ~8 Hz on the ground; the real servos follow targets 100-150 ms late, far
+# slower than the sim actuator model. These logs are used to fit the sim model (gain, armature, delay, friction).
+#
+#   cd build && ./examples/example_sysid ../config/robot/ARTI-D1/motor.yaml ../config/sysid/ARTI-D1_response.yaml ./sysid_response
+#
+# Then upload the whole ./sysid_response folder (CSV per test). About 6 minutes of motion in total.
+#
+# HANG THE ROBOT so both feet are off the ground and nothing can hit the legs or arms. Keep a hand on the power switch.
+# Every test asks first: Enter = run, s + Enter = skip, q + Enter = quit.
+#
+# Order: start limp -> measured pose -> hold_pose -> 'check' of every joint (sign / range) -> home -> demo replay
+# -> back to home -> limp.
+# Units: every angle is the URDF JOINT angle in rad (0 = URDF zero), motor ID - 1 order:
+#   0 left_arm_m8, 1 left_hip_yaw, 2 right_arm_m8, 3 right_hip_yaw, 4 left_arm_m8crank_plate, 5 left_hip_roll,
+#   6 right_arm_m8crank_plate, 7 right_hip_roll, 8 left_hip_pitch, 9 right_hip_pitch, 10 left_knee, 11 right_knee,
+#   12 left_ankle, 13 right_ankle
+# The plates are commanded as URDF plate angles and go to the shoulder m7 servos (IDs 5 / 7) through ARTI_D1_shoulder.
+# PD gains: motor.yaml kp / kd (Position P / D Gain registers), the gains ARTI-D1 walks with.
+
+# Control / log period of the test loop (the Dynamixel bus cycle is 10 ms, motor.yaml period).
+loop_period_us: 10000
+
+# Pose every joint holds while another one is tested: the walking default pose (= robot.yaml default_pose, the first
+# frame of the demo and of the policy).
+hold_pose: [-0.00048, 0.0, -0.00048, 0.0, -0.2268, -0.02466, -0.2268, 0.02466, -0.00293, -0.00293, 0.07136, 0.07136, -0.06844, -0.06844]
+
+# Real servo zero (every servo at pulse 0): hip link level, legs straight and vertical, soles flat
+# (motion_generator scripts/view_real_zero.py; motor.yaml zero_offset is built from it).
+home_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.15, 0.0, -0.15, -0.632508, -0.632508, 1.373575, 1.373575, -0.741067, -0.741067]
+
+# Speed (rad/s) for every move between test poses.
+move_speed: 0.3
+
+# Safety box per joint (rad): covers hold_pose, home_pose and the demo (config/681.yaml) + 0.1 rad. Commands are also
+# clamped to the URDF joint limits; a measured joint more than 0.05 rad past them aborts the test.
+safe_min: [-0.45, -0.25, -0.45, -0.25, -0.23, -0.27, -0.23, -0.21, -0.78, -0.78, -0.36, -0.36, -0.89, -0.89]
+safe_max: [ 0.35,  0.25,  0.35,  0.25,  0.15,  0.21,  0.15,  0.27,  0.43,  0.43,  1.50,  1.50,  0.37,  0.44]
+
+# Abort (every servo limp) if any of these trips.
+abort:
+  tracking_error: 0.30          # |command - position| rad, joint tests and moves
+  replay_tracking_error: 0.60   # same during the demo replay: the knees follow up to 3.3 rad/s there and lag more
+  tracking_time: 0.10           # s the error must stay over the limit before it aborts (a few bus cycles of lag
+                                # behind a fast target are normal)
+  current: 3.0           # |present current| A (XH540-W270 stall 4.4 A, XM430-W350 2.3 A at 12 V)
+  temperature: 70.0      # deg C
+
+# Expected motion for +0.1 rad from hold_pose (URDF FK). Directions are the ROBOT's own: forward = where the robot
+# faces, left = the robot's left. Standing in FRONT of the robot (facing it), its left is YOUR right and its forward
+# comes toward you. The 'check' test prints these and asks whether the joint moved that way first.
+# Joints whose hold_pose is far from home_pose (hip_roll, hip_pitch, knee, ankle) already prove their axis: with a
+# wrong axis the move to hold_pose / home would end visibly wrong. hip_yaw and the arms (hold = home) only show it here.
+expect_positive:
+  left_arm_m8:             "left arm swings BACKWARD (hand ~17 mm toward the robot's back)"
+  right_arm_m8:            "right arm swings BACKWARD (hand ~17 mm toward the robot's back)"
+  left_arm_m8crank_plate:  "left arm LIFTS sideways (hand ~17 mm up)"
+  right_arm_m8crank_plate: "right arm LIFTS sideways (hand ~17 mm up)"
+  left_hip_yaw:            "left toes turn to the ROBOT's left (counter-clockwise seen from above; facing the robot: to YOUR right)"
+  right_hip_yaw:           "right toes turn to the ROBOT's left (counter-clockwise seen from above; facing the robot: to YOUR right)"
+  left_hip_roll:           "left foot swings OUTWARD (to the robot's left) 19 mm"
+  right_hip_roll:          "right foot swings INWARD (to the robot's left, toward the left leg) 19 mm"
+  left_hip_pitch:          "left foot swings BACKWARD 18 mm (toward the robot's back), toes tilt down"
+  right_hip_pitch:         "right foot swings BACKWARD 18 mm (toward the robot's back), toes tilt down"
+  left_knee:               "left foot moves BACKWARD 12 mm (knee bends), toes tilt down"
+  right_knee:              "right foot moves BACKWARD 12 mm (knee bends), toes tilt down"
+  left_ankle:              "left TOES go DOWN 5.7 deg"
+  right_ankle:             "right TOES go DOWN 5.7 deg"
+
+# Tests in order (each asks first: Enter = run, s = skip, q = quit). Every joint moves around hold_pose (the walking
+# default pose), the others hold it. Legs only, the policy's gains (motor.yaml kp / kd).
+#   check: left_hip_yaw sign after the 2026-11-10 axis fix (+0.1 rad: left toes turn to the ROBOT's left).
+#   step:  +-0.1 rad steps, each held 1 s, 3 times (delay, rise time, overshoot).
+#   chirp: +-0.04 rad sine sweeping 0.3 -> 8 Hz over 20 s (gain / phase lag up to the 8 Hz shake).
+#   sweep: triangle wave +-0.15 rad at 0.5 / 1 / 2 rad/s (friction, speed limit).
+tests:
+  - {type: check, joint: left_hip_yaw, amplitude: 0.1, speed: 0.1}
+  - {type: step, joint: left_knee, amplitude: 0.1, hold: 1.0, repeat: 3}
+  - {type: step, joint: left_hip_pitch, amplitude: 0.1, hold: 1.0, repeat: 3}
+  - {type: step, joint: left_ankle, amplitude: 0.1, hold: 1.0, repeat: 3}
+  - {type: step, joint: left_hip_roll, amplitude: 0.1, hold: 1.0, repeat: 3}
+  - {type: step, joint: left_hip_yaw, amplitude: 0.1, hold: 1.0, repeat: 3}
+  - {type: step, joint: right_knee, amplitude: 0.1, hold: 1.0, repeat: 3}
+  - {type: chirp, joint: left_knee, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  - {type: chirp, joint: left_hip_pitch, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  - {type: chirp, joint: left_ankle, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  - {type: chirp, joint: left_hip_roll, amplitude: 0.04, f0: 0.3, f1: 8.0, duration: 20.0}
+  - {type: sweep, joint: left_knee, amplitude: 0.15, speeds: [0.5, 1.0, 2.0], cycles: 3}
+  - {type: sweep, joint: left_ankle, amplitude: 0.15, speeds: [0.5, 1.0, 2.0], cycles: 3}
