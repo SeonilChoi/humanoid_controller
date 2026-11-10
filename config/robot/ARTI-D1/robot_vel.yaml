@@ -7,10 +7,10 @@ urdf_file: ../config/robot/ARTI-D1/robot.urdf
 # Velocity-walk policy (arti_d1 Template-Arti-D1-Vel-Direct-v0, microduck_rl port). Export:
 #   python scripts/vel/pt_to_onnx_vel.py --checkpoint <run>/checkpoints/agent_N.pt --output agent_vel.onnx
 # Check in sim: python scripts/vel/eval_vel.py --mode score --checkpoint agent_vel.onnx
-# agent_vel.onnx = arti_d1 v9 run 2026-11-10_08-23-43 agent_36000 (from v7 cont1 agent_240000, fine-tuned with a
-# 25-65 ms actuator delay after the first real run shook: the robot's action -> joint lag is 85-117 ms). Sim at that
-# delay, ONNX closed loop: 0/64 falls, fwd .046 / back -.031 m/s, turn .309 rad/s, stand still, no sideways walking
-# (v7 cont1 at the same delay: 12/64 falls). The AMP policy is robot.yaml.
+# agent_vel.onnx = arti_d1 v11 run 2026-11-10_11-38-44 agent_12000: v9 setup (39-dim obs, action_scale 0.5) fine-tuned
+# from v9 agent_36000 on a servo model fitted to this robot's sysid (Return Delay Time 0, 10 ms bus): delay ~22 ms,
+# kp x1.5, kd x1.25, armature x3 (arti_d1 scripts/tuning/fit_servo_model.py). Sim on that model, ONNX closed loop:
+# 0/64 falls, fwd .054 / back -.067 m/s, turn .291 rad/s, stand still. Early checkpoint; training continues.
 model_file: ../config/robot/ARTI-D1/agent_vel.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
