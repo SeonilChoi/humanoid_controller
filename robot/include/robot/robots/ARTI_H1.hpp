@@ -69,6 +69,15 @@ private:
     // previous actions 12, command 3). Fixed at construction; observation_size_ follows it.
     bool velocity_obs_{false};
 
+    // robot.yaml policy.observation: "velocity_history" = 81-D (ArtiH1VelocityEnvCfg.obs_action_history): the 45-D
+    // layout with the last three actions a(t), a(t-1), a(t-2) and the last sent joint target - default pose before
+    // the command.
+    bool action_history_obs_{false};
+
+    // robot.yaml policy.target_rate_limit (rad/s, 0 = off; ArtiH1VelocityEnvCfg.target_rate_limit): each control
+    // step the joint target moves at most rate * control_dt from the previous target (Open Duck max_motor_velocity).
+    double target_rate_limit_{0.0};
+
     std::size_t observation_size_{116};
 
     std::array<double, 12> policy_kp_{};      // motor.yaml kp / kd, driver units, motor index order
@@ -136,6 +145,12 @@ private:
     std::array<double, 3> command_{};           // last command (vx m/s, vy m/s, yaw rate rad/s)                    // rad; beyond it the policy stops and the joints are only damped
 
     std::array<double, 12> previous_actions_{};
+
+    std::array<double, 12> previous_actions2_{};   // a(t-1), velocity_history observation
+
+    std::array<double, 12> previous_actions3_{};   // a(t-2), velocity_history observation
+
+    std::array<double, 12> q_target_{};            // last joint target sent (rad, policy order, after the rate limit)
 
     // Runtime log (robot.yaml 'log_file', empty = off): one CSV row per control step with the observation, the ONNX
     // outputs, the motor states and the raw IMU, so a real run can be replayed / compared with the simulator.

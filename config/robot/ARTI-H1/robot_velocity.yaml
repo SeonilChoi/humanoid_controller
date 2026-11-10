@@ -6,17 +6,18 @@ joy_handler_config_file: ../config/robot/ARTI-H1/joy.yaml
 urdf_file: ../config/robot/ARTI-H1/robot.urdf
 # Velocity-command policy (no gait clock, no AMP): run with
 #   ./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml
-# agent_vel_r05_240000.onnx = arti_h1_local Template-Arti-H1-Velocity-Direct-v0 (Isaac Lab 3.x / PhysX, skrl PPO),
-# RSI round r05 (11-10, logs/rsi/r05; run logs/skrl/arti_h1_velocity/2026-11-10_00-32-17_ppo_torch agent_240000).
-# Sim eval (64 env x 10 s per scenario, every scenario from standstill, PhysX):
-#   tracking vx 0.85 / vy 0.45 / yaw small 0.83 / yaw large 0.83 of the command; 0 falls without pushes;
-#   gait start from standstill 100 %; zero command = stands still (0 liftoffs);
-#   mirror-symmetric foot lift (L vs mirrored R swing peak <= 0.17 cm, mean 0.07 cm), swing peak >= 2.9 cm;
-#   sole-centre gap >= 10.5 cm (1st percentile, soles 9 cm wide), sole overlap 0.1 % of steps;
-#   0.4 m/s random-direction kicks every 2 s: 3.9 % of envs fell.
-# Same sim-to-real setup as the AMP stage-3 models (actuator model from the motor.yaml gains, joint lag, MTi-3 IMU
-# model, stale feedback, joint offsets, real joint limits, hip_roll +-15 deg).
-model_file: ../config/robot/ARTI-H1/agent_vel_r05_240000.onnx
+# agent_vel_r12_240000.onnx = arti_h1_local Template-Arti-H1-Velocity-Direct-v0 (Isaac Lab 3.x / PhysX, skrl PPO),
+# RSI round r12 (11-10, logs/rsi/r12; run logs/skrl/arti_h1_velocity/2026-11-10_15-03-32_ppo_torch agent_240000),
+# fine-tuned from r05 with the Open Duck Mini sim-to-real items: 81-D observation (last 3 actions + joint target),
+# joint target slew limit 5.24 rad/s, actuator delay jittered 0-1 control step and IMU gyro delay 0-2 steps redrawn
+# every step, plus foot-swing reference and straight hip-yaw costs.
+# Sim eval (64 env x 10 s per scenario, every scenario from standstill, PhysX), with the r12 delays / rate limit:
+#   tracking vx 0.75 / vy 0.31 / yaw small 0.78 / yaw large 0.84; 0 falls without pushes; 3.1 % falls under
+#   0.4 m/s kicks every 2 s; body roll/pitch rate rms 0.48 rad/s; pelvis pitch std 1.8 deg; hip yaw while walking
+#   straight <= 0.5 deg (r05: 7.7 deg). r05 in the same conditions: 4 falls, 10.2 % kick falls, 0.74 rad/s.
+# Previous model (45-D): model_file agent_vel_r05_240000.onnx with policy.observation: velocity and no
+# target_rate_limit.
+model_file: ../config/robot/ARTI-H1/agent_vel_r12_240000.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
 log_file: ./arti_h1_vel_run
@@ -63,11 +64,15 @@ foots:
     offset: [-0.026, 0.0, -0.051]
 
 # Policy settings; must match ArtiH1VelocityEnvCfg.
-# ONNX: input obs [1, 45] = pelvis gyro (rad/s, pelvis frame) 3, gravity direction in the pelvis frame 3,
-# joint pos - default_pose 12, joint vel 12, previous actions 12, command (vx m/s, vy m/s, yaw rate rad/s, unscaled) 3;
+# ONNX: input obs [1, 81] = pelvis gyro (rad/s, pelvis frame) 3, gravity direction in the pelvis frame 3,
+# joint pos - default_pose 12, joint vel 12, actions a(t) 12, a(t-1) 12, a(t-2) 12, last joint target - default_pose 12,
+# command (vx m/s, vy m/s, yaw rate rad/s, unscaled) 3;
 # outputs "actions" (fed back) and "q_des" (= clamp(default + per-joint scale * actions, real limits, hip_roll +-15 deg)).
+# The controller then limits q_des to the previous target +- target_rate_limit * control_dt and sends that.
 policy:
-  observation: velocity
+  observation: velocity_history
+  # rad/s; joint target slew limit (ArtiH1VelocityEnvCfg.target_rate_limit), 0 = off
+  target_rate_limit: 5.24
   control_dt: 0.0166666667
   # no gait clock in this policy (kept for the shared parser; the clock is logged but not observed)
   gait_phase_rate: 0.0

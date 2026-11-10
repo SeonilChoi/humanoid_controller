@@ -31,6 +31,9 @@ constexpr std::size_t OBSERVATION_SIZE = 116;
 // ArtiH1VelocityEnv._get_observations: gyro 3, gravity 3, joint pos - default 12, joint vel 12, previous actions 12,
 // command 3 (robot.yaml policy.observation: velocity).
 constexpr std::size_t VELOCITY_OBSERVATION_SIZE = 45;
+// obs_action_history: gyro 3, gravity 3, joint pos - default 12, joint vel 12, actions a(t), a(t-1), a(t-2) 36,
+// joint target - default 12, command 3 (robot.yaml policy.observation: velocity_history).
+constexpr std::size_t VELOCITY_HISTORY_OBSERVATION_SIZE = 81;
 constexpr auto STAND_UP_TIME = std::chrono::seconds(3);
 constexpr double PI = 3.14159265358979323846;
 
@@ -124,12 +127,24 @@ robot::ArtiH1::ArtiH1(const std::string& config_file, const std::string& model_f
         const auto type = policy["observation"].as<std::string>();
         if (type == "velocity") {
             velocity_obs_ = true;
+        } else if (type == "velocity_history") {
+            velocity_obs_ = true;
+            action_history_obs_ = true;
         } else if (type != "amp") {
-            throw std::runtime_error("[ArtiH1::ArtiH1] robot.yaml policy.observation must be 'amp' or 'velocity'.");
+            throw std::runtime_error(
+                "[ArtiH1::ArtiH1] robot.yaml policy.observation must be 'amp', 'velocity' or 'velocity_history'.");
         }
     }
-    observation_size_ = velocity_obs_ ? VELOCITY_OBSERVATION_SIZE : OBSERVATION_SIZE;
-    std::cout << "[ArtiH1] observation: " << (velocity_obs_ ? "velocity (45)" : "amp (116)") << std::endl;
+    observation_size_ = action_history_obs_ ? VELOCITY_HISTORY_OBSERVATION_SIZE
+                        : velocity_obs_     ? VELOCITY_OBSERVATION_SIZE
+                                            : OBSERVATION_SIZE;
+    std::cout << "[ArtiH1] observation: "
+              << (action_history_obs_ ? "velocity_history (81)" : velocity_obs_ ? "velocity (45)" : "amp (116)")
+              << std::endl;
+    if (policy["target_rate_limit"]) target_rate_limit_ = policy["target_rate_limit"].as<double>();
+    std::cout << "[ArtiH1] joint target rate limit: "
+              << (target_rate_limit_ > 0.0 ? std::to_string(target_rate_limit_) + " rad/s" : std::string("off"))
+              << std::endl;
     // Walking PD gains: motor.yaml 'kp' / 'kd' per motor (driver units, the real robot gains).
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         policy_kp_[i] = motor_manager_->gains(static_cast<uint8_t>(i)).kp;
@@ -207,7 +222,8 @@ void robot::ArtiH1::print_observation() const {
     const auto& o = observation_;
     constexpr double DEG = 180.0 / PI;
     if (velocity_obs_) {
-        if (o.size() != VELOCITY_OBSERVATION_SIZE) return;
+        if (o.size() != observation_size_) return;
+        const std::size_t c = o.size() - 3;   // command index
         // [3:6] = gravity direction in the pelvis frame: (0, 0, -1) when level
         const double roll = std::atan2(o[4], -o[5]) * DEG;    // + = right side down
         const double pitch = std::atan2(-o[3], -o[5]) * DEG;  // + = nose down
@@ -218,7 +234,7 @@ void robot::ArtiH1::print_observation() const {
             std::printf("[observe]   %-18s %+8.2f          %+7.3f     %+.3f\n", kPolicyJointNames[i], o[6 + i] * DEG,
                         o[18 + i], o[30 + i]);
         }
-        std::printf("[observe] command (%+.4f %+.4f %+.4f)\n", o[42], o[43], o[44]);
+        std::printf("[observe] command (%+.4f %+.4f %+.4f)\n", o[c], o[c + 1], o[c + 2]);
         std::fflush(stdout);
         return;
     }
@@ -388,6 +404,9 @@ void robot::ArtiH1::initialize() {
     imu_sample_time_ = std::chrono::steady_clock::now();
     gait_phase_ = initial_gait_phase_;
     previous_actions_.fill(0.0);
+    previous_actions2_.fill(0.0);
+    previous_actions3_.fill(0.0);
+    q_target_ = default_pose_;   // the env resets its joint target to the default pose
 }
 
 void robot::ArtiH1::home(uint8_t index) {
@@ -665,13 +684,20 @@ void robot::ArtiH1::observation() {
             const auto joint_id = kinematics_->joint_id(name);
             observation_.push_back(motor_status[joint_id_to_motor_index_.at(joint_id)].velocity);
         }
-        for (const double action : previous_actions_) observation_.push_back(action);   // [30:42]
+        for (const double action : previous_actions_) observation_.push_back(action);   // [30:42] a(t)
+        if (action_history_obs_) {
+            for (const double action : previous_actions2_) observation_.push_back(action);   // [42:54] a(t-1)
+            for (const double action : previous_actions3_) observation_.push_back(action);   // [54:66] a(t-2)
+            for (std::size_t i = 0; i < NUM_JOINTS; ++i) {                                // [66:78] target - default
+                observation_.push_back(q_target_[i] - default_pose_[i]);
+            }
+        }
         joy_interface::joy_data_t joy_data{};
         joy_handler_->read(joy_data);
         const auto dead = [this](double v) { return std::abs(v) < stick_deadzone_ ? 0.0 : v; };
         command_ = {dead(joy_data.stick_ly) * command_max_[0], -dead(joy_data.stick_lx) * command_max_[1],
                     -dead(joy_data.stick_rx) * command_max_[2]};
-        for (std::size_t i = 0; i < 3; ++i) observation_.push_back(command_[i] * command_scale_[i]);   // [42:45]
+        for (std::size_t i = 0; i < 3; ++i) observation_.push_back(command_[i] * command_scale_[i]);   // last 3
         return;
     }
 
@@ -757,6 +783,14 @@ void robot::ArtiH1::control() {
         // action_ = q_des (rad, policy order): default pose + scaled action + nominal gait at the next clock
         // phase, clamped to the training joint limits (hip_roll +-15 deg).
         controller_->update(observation_, action_);
+        // ArtiH1VelocityEnv._pre_physics_step: slew limit against the previous target, then remember the target.
+        for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+            if (target_rate_limit_ > 0.0) {
+                const double dq = target_rate_limit_ * control_dt_;
+                action_[i] = std::clamp(action_[i], q_target_[i] - dq, q_target_[i] + dq);
+            }
+            q_target_[i] = action_[i];
+        }
         for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
             const auto joint_id = kinematics_->joint_id(kPolicyJointNames[i]);
             const auto motor_index = joint_id_to_motor_index_.at(joint_id);
@@ -769,6 +803,8 @@ void robot::ArtiH1::control() {
         if (actions.size() != NUM_JOINTS) {
             throw std::runtime_error("[ArtiH1::control] The ONNX model has no 'actions' output (needs pt_to_onnx.py export).");
         }
+        previous_actions3_ = previous_actions2_;
+        previous_actions2_ = previous_actions_;
         std::copy(actions.begin(), actions.end(), previous_actions_.begin());
 
         if (log_file_ != nullptr) write_log_row();
