@@ -62,14 +62,14 @@ constexpr const char* kPolicyJointNames[NUM_JOINTS] = {
 
 // policy.type vel (arti_d1 ArtiD1VelEnv._get_observations, actor part): pelvis angular velocity (pelvis frame) 3,
 // projected gravity (pelvis frame) 3, leg joint position - default pose 10, leg joint velocity 10, previous actions 10,
-// command (vx m/s, vy m/s, yaw rate rad/s, unscaled) 3. Legs = policy order without the arms.
+// command (vx m/s, vy m/s, yaw rate rad/s, unscaled) 3. arti_d1 v10+: the last N actions (robot.yaml
+// policy.action_history, newest first) instead of one. Legs = policy order without the arms.
 constexpr std::size_t VEL_NUM_LEGS = 10;
 constexpr std::size_t VEL_OBS_GRAVITY = 3;
 constexpr std::size_t VEL_OBS_JOINT_POS = 6;
 constexpr std::size_t VEL_OBS_JOINT_VEL = VEL_OBS_JOINT_POS + VEL_NUM_LEGS;   // 16
 constexpr std::size_t VEL_OBS_ACTIONS = VEL_OBS_JOINT_VEL + VEL_NUM_LEGS;     // 26
-constexpr std::size_t VEL_OBS_COMMAND = VEL_OBS_ACTIONS + VEL_NUM_LEGS;       // 36
-constexpr std::size_t VEL_OBSERVATION_SIZE = VEL_OBS_COMMAND + 3;             // 39
+// then the last N actions (policy.action_history, newest first, 10 N), then the command (3): 29 + 10 N values
 
 constexpr const char* kVelLegNames[VEL_NUM_LEGS] = {
     "left_hip_yaw",
@@ -162,7 +162,9 @@ robot::ArtiD1::ArtiD1(const std::string& config_file)
             std::find_if(std::begin(kPolicyJointNames), std::end(kPolicyJointNames),
                          [&](const char* n) { return std::string(n) == kVelLegNames[k]; }) - std::begin(kPolicyJointNames));
     }
-    previous_actions_.assign(vel_policy_ ? VEL_NUM_LEGS : NUM_JOINTS, 0.0);
+    if (vel_policy_ && policy["action_history"]) vel_action_history_ = policy["action_history"].as<std::size_t>();
+    if (vel_action_history_ < 1) throw std::runtime_error("[ArtiD1] robot.yaml policy.action_history must be >= 1");
+    previous_actions_.assign(vel_policy_ ? VEL_NUM_LEGS * vel_action_history_ : NUM_JOINTS, 0.0);
     std::cout << "[ArtiD1] policy type " << policy_type << " (observation " << observation_size() << ", actions "
               << previous_actions_.size() << ")" << std::endl;
     default_pose_ = read_array<NUM_JOINTS>(policy, "default_pose");
@@ -254,11 +256,12 @@ robot::ArtiD1::~ArtiD1() {
 }
 
 std::size_t robot::ArtiD1::observation_size() const {
-    return vel_policy_ ? VEL_OBSERVATION_SIZE : OBSERVATION_SIZE;
+    return vel_policy_ ? VEL_OBS_ACTIONS + VEL_NUM_LEGS * vel_action_history_ + 3 : OBSERVATION_SIZE;
 }
 
 void robot::ArtiD1::print_vel_observation() const {
-    if (observation_.size() != VEL_OBSERVATION_SIZE) return;
+    if (observation_.size() != observation_size()) return;
+    const std::size_t VEL_OBS_COMMAND = observation_size() - 3;
     const auto& o = observation_;
     constexpr double DEG = 180.0 / PI;
     // projected gravity g = R^T (0, 0, -1): upright (0, 0, -1); g.x > 0 = nose down, g.y < 0 = right side down
@@ -337,8 +340,10 @@ void robot::ArtiD1::write_log_row() {
     for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
         if (policy_ran) std::fprintf(log_file_, ",%.7g", action_[i]); else std::fprintf(log_file_, ",nan");
     }
-    for (const double a : previous_actions_) {
-        if (policy_ran) std::fprintf(log_file_, ",%.7g", a); else std::fprintf(log_file_, ",nan");
+    // newest actions only (the header names one per joint)
+    const std::size_t n_actions = vel_policy_ ? VEL_NUM_LEGS : NUM_JOINTS;
+    for (std::size_t i = 0; i < n_actions; ++i) {
+        if (policy_ran) std::fprintf(log_file_, ",%.7g", previous_actions_[i]); else std::fprintf(log_file_, ",nan");
     }
     for (const char* name : kPolicyJointNames) {
         const auto& s = last_joint_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))];
@@ -528,7 +533,7 @@ void robot::ArtiD1::observation() {
             const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kVelLegNames[k]));
             observation_.push_back(last_joint_status_[motor_index].velocity);
         }
-        for (const double a : previous_actions_) observation_.push_back(a);   // [26:36]
+        for (const double a : previous_actions_) observation_.push_back(a);   // [26:26+10N] newest first
         read_command();
         for (const double c : command_) observation_.push_back(c);           // [36:39] unscaled
         return;
@@ -642,11 +647,14 @@ void robot::ArtiD1::control() {
         }
 
         const auto& actions = amp_controller_->policy_actions();
-        if (actions.size() != previous_actions_.size()) {
+        const std::size_t n_actions = vel_policy_ ? VEL_NUM_LEGS : NUM_JOINTS;
+        if (actions.size() != n_actions) {
             throw std::runtime_error("[ArtiD1::control] The ONNX 'actions' output has " + std::to_string(actions.size()) +
-                                     " values, policy.type needs " + std::to_string(previous_actions_.size()) +
+                                     " values, policy.type needs " + std::to_string(n_actions) +
                                      " (export with pt_to_onnx.py / vel/pt_to_onnx_vel.py).");
         }
+        // history newest first: shift the older actions back by one step, newest in front
+        std::copy_backward(previous_actions_.begin(), previous_actions_.end() - n_actions, previous_actions_.end());
         std::copy(actions.begin(), actions.end(), previous_actions_.begin());
 
         if (log_file_ != nullptr) write_log_row();

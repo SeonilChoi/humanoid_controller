@@ -73,6 +73,8 @@ foots:
 # Dynamixel position-mode model as in the AMP task (motor.yaml kp / kd); if they change, retrain.
 policy:
   type: vel
+  # Past actions in the observation (newest first): 1 for arti_d1 v1-v9 policies (obs 39), 3 for v10+ (obs 59).
+  action_history: 1
   control_dt: 0.0166666667   # 60 Hz (env decimation 4 at 240 Hz)
   # Pelvis tilt (rad) that counts as a fall: the policy stops and every servo gets Position P Gain 0.
   max_tilt: 0.7

@@ -99,7 +99,11 @@ private:
     // cos(pelvis tilt) from the last observation(); control() stops the policy below cos(max_tilt)
     double tilt_cos_{1.0};
 
-    // raw ONNX "actions" of the last step, fed back as the previous-actions observation (14 amp, 10 vel)
+    // vel: number of past actions in the observation (robot.yaml policy.action_history; arti_d1 v1-v9 1, v10 3)
+    std::size_t vel_action_history_{1};
+
+    // raw ONNX "actions" of the last steps, fed back as the previous-actions observation, newest first
+    // (14 amp, 10 x action_history vel)
     std::vector<double> previous_actions_;
 
     std::size_t observation_size() const;
