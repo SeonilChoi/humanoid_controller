@@ -73,6 +73,9 @@ policy:
   observation: velocity_history
   # rad/s; joint target slew limit (ArtiH1VelocityEnvCfg.target_rate_limit), 0 = off
   target_rate_limit: 5.24
+  # joint target low-pass, before the rate limit: target = previous + alpha * (q_des - previous); 1 = off.
+  # 11-11 real run without it: 30 Hz joint chatter while standing. Sim r12 with 0.6: 0 falls, chatter 3-5x lower.
+  target_lowpass_alpha: 0.6
   control_dt: 0.0166666667
   # no gait clock in this policy (kept for the shared parser; the clock is logged but not observed)
   gait_phase_rate: 0.0

@@ -142,6 +142,12 @@ robot::ArtiH1::ArtiH1(const std::string& config_file, const std::string& model_f
               << (action_history_obs_ ? "velocity_history (81)" : velocity_obs_ ? "velocity (45)" : "amp (116)")
               << std::endl;
     if (policy["target_rate_limit"]) target_rate_limit_ = policy["target_rate_limit"].as<double>();
+    if (policy["target_lowpass_alpha"]) target_lowpass_alpha_ = policy["target_lowpass_alpha"].as<double>();
+    if (!(target_lowpass_alpha_ > 0.0 && target_lowpass_alpha_ <= 1.0)) {
+        throw std::runtime_error("[ArtiH1::ArtiH1] robot.yaml policy.target_lowpass_alpha must be in (0, 1].");
+    }
+    std::cout << "[ArtiH1] joint target low-pass alpha: " << target_lowpass_alpha_
+              << (target_lowpass_alpha_ < 1.0 ? "" : " (off)") << std::endl;
     std::cout << "[ArtiH1] joint target rate limit: "
               << (target_rate_limit_ > 0.0 ? std::to_string(target_rate_limit_) + " rad/s" : std::string("off"))
               << std::endl;
@@ -783,8 +789,9 @@ void robot::ArtiH1::control() {
         // action_ = q_des (rad, policy order): default pose + scaled action + nominal gait at the next clock
         // phase, clamped to the training joint limits (hip_roll +-15 deg).
         controller_->update(observation_, action_);
-        // ArtiH1VelocityEnv._pre_physics_step: slew limit against the previous target, then remember the target.
+        // ArtiH1VelocityEnv._pre_physics_step: low-pass and slew limit against the previous target, then remember it.
         for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+            if (target_lowpass_alpha_ < 1.0) action_[i] = q_target_[i] + target_lowpass_alpha_ * (action_[i] - q_target_[i]);
             if (target_rate_limit_ > 0.0) {
                 const double dq = target_rate_limit_ * control_dt_;
                 action_[i] = std::clamp(action_[i], q_target_[i] - dq, q_target_[i] + dq);

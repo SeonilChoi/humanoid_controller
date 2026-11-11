@@ -165,7 +165,8 @@ the model name, so AMP and PPO runs stay apart.
 `ArtiH1VelocityEnv` observation (pelvis gyro, gravity in the pelvis frame, joint pos - default pose, joint vel, the last
 three actions, last joint target - default pose, raw command) instead of the 116-D AMP one, and
 `policy.target_rate_limit: 5.24` (rad/s): each control step the joint target moves at most 5.24 * control_dt from the
-previous one, as in training. Full stick = vx 0.15 m/s, vy 0.08 m/s, yaw 0.4 rad/s; a released stick (zero command)
+previous one, as in training. `policy.target_lowpass_alpha: 0.6` low-passes the target before that limit
+(target = previous + 0.6 * (q_des - previous)); without it the r12 policy chattered at 30 Hz on the robot. Full stick = vx 0.15 m/s, vy 0.08 m/s, yaw 0.4 rad/s; a released stick (zero command)
 stands still. The previous 45-D model still works with `model_file: .../agent_vel_r05_240000.onnx`,
 `observation: velocity` and no `target_rate_limit`. `--observe` prints the velocity observation in both modes. Do not
 use `--model` with a velocity ONNX on `robot.yaml` (the AMP layout would be fed to it; the ONNX input size check stops

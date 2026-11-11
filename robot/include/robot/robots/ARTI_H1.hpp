@@ -78,6 +78,11 @@ private:
     // step the joint target moves at most rate * control_dt from the previous target (Open Duck max_motor_velocity).
     double target_rate_limit_{0.0};
 
+    // robot.yaml policy.target_lowpass_alpha (ArtiH1VelocityEnvCfg.target_lowpass_alpha, 1 = off): before the rate limit
+    // the joint target becomes previous + alpha * (q_des - previous). 11-11 r12 run: without it the joints chattered
+    // at 30 Hz (period-2 limit cycle between the policy and the fast real joints).
+    double target_lowpass_alpha_{1.0};
+
     std::size_t observation_size_{116};
 
     std::array<double, 12> policy_kp_{};      // motor.yaml kp / kd, driver units, motor index order
