@@ -3,7 +3,15 @@
 #include <unistd.h>
 #include <linux/joystick.h>
 
+#include <cstring>
+#include <iostream>
+#include <stdexcept>
+
 #include "joy/playstation/dualsense.hpp"
+
+namespace {
+constexpr auto RECONNECT_PERIOD = std::chrono::seconds(1);
+}
 
 float deadzone(float v, float threshold = 0.1f) {
     if (v > -threshold && v < threshold) return 0.0f;
@@ -23,15 +31,45 @@ void playstation::DualSense::initialize() {
     initialized_ = true;
 }
 
+void playstation::DualSense::disconnect(int error) {
+    if (fd_ >= 0) {
+        ::close(fd_);
+        fd_ = -1;
+    }
+    {
+        // a dropped pad sends no release events: clear everything so the robot gets the zero command (stand)
+        std::lock_guard<std::mutex> lock(mutex_);
+        data_ = joy_interface::joy_data_t{};
+    }
+    next_open_ = std::chrono::steady_clock::now() + RECONNECT_PERIOD;
+    std::cerr << "[DualSense] " << device_ << " lost (" << std::strerror(error)
+              << "): command set to zero, reconnecting..." << std::endl;
+}
+
+void playstation::DualSense::try_reconnect() {
+    const auto now = std::chrono::steady_clock::now();
+    if (now < next_open_) return;
+    next_open_ = now + RECONNECT_PERIOD;
+    fd_ = open(device_.c_str(), O_RDONLY | O_NONBLOCK);
+    // the kernel replays the current button / axis state as JS_EVENT_INIT events, read below
+    if (fd_ >= 0) std::cerr << "[DualSense] " << device_ << " reconnected." << std::endl;
+}
+
 void playstation::DualSense::update() {
     if (!initialized_) return;
+    if (fd_ < 0) {
+        try_reconnect();
+        if (fd_ < 0) return;
+    }
 
     js_event event{};
     while (true) {
         const ssize_t n = ::read(fd_, &event, sizeof(event));
         if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) break;
-            throw std::runtime_error("[DualSense::update] read failed.");
+            if (errno == EINTR) continue;
+            disconnect(errno);
+            return;
         }
         if (n != static_cast<ssize_t>(sizeof(event))) break;
 

@@ -1,6 +1,7 @@
 #ifndef JOY_PLAYSTATION_DUALSENSE_HPP_
 #define JOY_PLAYSTATION_DUALSENSE_HPP_
 
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <cstdint>
@@ -33,6 +34,14 @@ private:
     std::mutex mutex_;
 
     bool initialized_{false};
+
+    // Bluetooth drop: the device read fails, the fd is closed and the stick state cleared (zero command); update()
+    // then retries opening the device every RECONNECT_PERIOD until the pad is back.
+    void disconnect(int error);
+
+    void try_reconnect();
+
+    std::chrono::steady_clock::time_point next_open_{};
 };
 
 } // namespace playstation
