@@ -38,6 +38,18 @@ public:
     // angular velocity instead of the IMU; the real IMU is still logged and still used for the max_tilt fall check.
     void set_blind_imu(bool blind) { blind_imu_ = blind; }
 
+    // Zero check (main.cpp --observe --limp-right): after initialize() the right-leg motors get kp 0 (policy kd only,
+    // so the leg is limp but damped) while the left leg keeps holding the default pose. Hold the pelvis level with
+    // both soles pressed flat on the floor, the right foot placed as the mirror image of the left; the right-leg
+    // readings then differ from the left-leg ones by the right-leg zero error (motor.yaml has the same
+    // homing_offset on both sides). update_limp_stats() averages that difference every control step (~2 s window),
+    // print_limp_report() prints it with the homing_offset that would remove it.
+    void set_limp_right();
+
+    void update_limp_stats();
+
+    void print_limp_report() const;
+
 private:
     void home(uint8_t index);
 
@@ -164,6 +176,12 @@ private:
     std::chrono::steady_clock::time_point log_start_{};
 
     motor_interface::motor_state_t last_motor_status_[12]{};
+
+    bool limp_right_{false};
+
+    std::array<double, 12> limp_mean_pos_{};   // policy order, EMA of the joint positions while the right leg is limp
+
+    bool limp_stats_init_{false};
 
     std::array<double, 4> last_imu_orientation_{};   // w, x, y, z (sensor to world)
 

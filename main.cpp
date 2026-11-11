@@ -17,10 +17,12 @@ void on_sigint(int) { running = 0; }
 int main(int argc, char* argv[])
 {
     const auto usage = [&]() {
-        std::cerr << "Usage: " << argv[0] << " <config_file> [--ppo | --model <file.onnx>] [--observe | --blind-imu]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <config_file> [--ppo | --model <file.onnx>] [--observe [--limp-right] | --blind-imu]" << std::endl;
         std::cerr << "  --ppo        run the RL-only (PPO) policy: robot.yaml ppo_model_file instead of model_file (AMP)" << std::endl;
         std::cerr << "  --model F    run the ONNX policy F instead of robot.yaml model_file (same obs / q_des interface)" << std::endl;
         std::cerr << "  --observe    home, stand in the default pose and print the observation at 5 Hz (no policy)" << std::endl;
+        std::cerr << "  --limp-right with --observe: right leg limp (kp 0), prints the right-leg zero error vs the left leg" << std::endl;
+        std::cerr << "               (SUPPORT THE ROBOT: it cannot stand on the right leg in this mode)" << std::endl;
         std::cerr << "  --blind-imu  test: the policy gets the standing tilt and zero angular velocity instead of the IMU" << std::endl;
         std::cerr << "               (the IMU is still logged and still stops the robot on a fall)" << std::endl;
     };
@@ -33,10 +35,13 @@ int main(int argc, char* argv[])
     std::string model_file;
     bool observe = false;
     bool blind_imu = false;
+    bool limp_right = false;
     for (int i = 2; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--observe") {
             observe = true;
+        } else if (arg == "--limp-right") {
+            limp_right = true;
         } else if (arg == "--blind-imu") {
             blind_imu = true;
         } else if (arg == "--ppo") {
@@ -53,6 +58,11 @@ int main(int argc, char* argv[])
             usage();
             return 1;
         }
+    }
+
+    if (limp_right && !observe) {
+        std::cerr << "[main] --limp-right only works with --observe." << std::endl;
+        return 1;
     }
 
     std::signal(SIGINT, on_sigint);
@@ -75,13 +85,19 @@ int main(int argc, char* argv[])
             // observation check only: the motors keep holding the default pose from initialize(); the observation is
             // logged at the control rate (60 Hz) and printed at 5 Hz
             constexpr auto kObservePeriod = std::chrono::microseconds(1'000'000 / 60);
+            if (limp_right) robot.set_limp_right();
             auto next_wakeup = std::chrono::steady_clock::now();
             int tick = 0;
             while (running) {
                 if (!robot.motors_running()) throw std::runtime_error("[main] Motor communication stopped (see the [MotorManager::run] message above).");
                 robot.observation();
                 robot.log_observation();
-                if (tick++ % 12 == 0) robot.print_observation();
+                robot.update_limp_stats();
+                if (limp_right) {
+                    if (tick++ % 30 == 0) robot.print_limp_report();   // 2 Hz
+                } else if (tick++ % 12 == 0) {
+                    robot.print_observation();
+                }
                 next_wakeup += kObservePeriod;
                 std::this_thread::sleep_until(next_wakeup);
             }

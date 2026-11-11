@@ -273,6 +273,54 @@ void robot::ArtiH1::print_observation() const {
     std::fflush(stdout);
 }
 
+void robot::ArtiH1::set_limp_right() {
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        if (std::string(kPolicyJointNames[i]).rfind("right_", 0) != 0) continue;
+        const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
+        motor_command_[motor_index].kp = 0.0;
+        motor_command_[motor_index].kd = policy_kd_[motor_index];
+    }
+    motor_manager_->write(motor_command_);
+    limp_right_ = true;
+    limp_stats_init_ = false;
+    std::cout << "[ArtiH1] --limp-right: right-leg motors kp 0 (damping only). Hold the pelvis level and press both soles"
+                 " flat on the floor, the right foot as the mirror image of the left." << std::endl;
+}
+
+void robot::ArtiH1::update_limp_stats() {
+    if (!limp_right_) return;
+    constexpr double kAlpha = 1.0 / 120.0;   // ~2 s at 60 Hz
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
+        const double q = last_motor_status_[motor_index].position;
+        limp_mean_pos_[i] = limp_stats_init_ ? limp_mean_pos_[i] + kAlpha * (q - limp_mean_pos_[i]) : q;
+    }
+    limp_stats_init_ = true;
+}
+
+void robot::ArtiH1::print_limp_report() const {
+    if (!limp_right_ || !limp_stats_init_) return;
+    constexpr double DEG = 180.0 / PI;
+    double roll = 0.0, pitch = 0.0;
+    if (observation_.size() >= 6) {
+        roll = std::atan2(observation_[4], -observation_[5]) * DEG;
+        pitch = std::atan2(-observation_[3], -observation_[5]) * DEG;
+    }
+    std::printf("\n[limp] pelvis roll %+5.2f pitch %+5.2f deg (keep both near 0)   ~2 s averages:\n", roll, pitch);
+    std::printf("[limp] joint        left(deg)  right(deg)  right-left(deg)  right motor id  homing_offset now -> suggested\n");
+    // policy order is (left, right) pairs: hip_yaw, hip_roll, hip_pitch, knee, ankle_pitch, ankle_roll
+    for (std::size_t i = 0; i + 1 < NUM_JOINTS; i += 2) {
+        const double l = limp_mean_pos_[i], r = limp_mean_pos_[i + 1];
+        const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i + 1]));
+        const double offset = motor_manager_->homing(motor_index).offset;
+        // after homing the reading is raw - (raw_at_stopper - homing_offset): a reading too high by e needs offset - e
+        std::printf("[limp]   %-12s %+8.2f   %+8.2f     %+8.2f        %2d          %+.4f -> %+.4f\n",
+                    kPolicyJointNames[i + 1] + 6, l * DEG, r * DEG, (r - l) * DEG, static_cast<int>(motor_index) + 1,
+                    offset, offset - (r - l));
+    }
+    std::fflush(stdout);
+}
+
 void robot::ArtiH1::log_observation() {
     if (log_file_ != nullptr) write_log_row();
 }

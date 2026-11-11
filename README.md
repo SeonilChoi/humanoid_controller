@@ -158,6 +158,14 @@ cd ~/humanoid_controller/build
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --model ../config/robot/ARTI-H1/agent_s2r_340000.onnx   # any other ONNX
 ./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml        # velocity-command policy (r14, 81-D obs, no gait clock)
 ```
+**Right-leg zero check** (11-11: in the default pose the right sole does not reach the floor, while motor.yaml uses
+the same homing_offset on both sides): `./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml --observe --limp-right`.
+After homing and the IMU calibration the right-leg motors go limp (kp 0, damping only) and the left leg keeps the default
+pose. **Support the robot**, hold the pelvis level (printed roll / pitch near 0) and press both soles flat on the floor
+with the right foot placed as the mirror image of the left. Every 0.5 s it prints the ~2 s average of left / right joint
+angles, right - left, and the right motor's homing_offset now -> suggested (offset - (right - left)). Copy the
+suggestion into motor.yaml once the numbers are steady, home again and check that the right sole now touches.
+
 `--ppo` / `--model` combine with `--blind-imu` and `--observe`. With `--ppo` / `--model` the log file name includes
 the model name, so AMP and PPO runs stay apart.
 
