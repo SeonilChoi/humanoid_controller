@@ -7,10 +7,11 @@ urdf_file: ../config/robot/ARTI-D1/robot.urdf
 # Velocity-walk policy (arti_d1 Template-Arti-D1-Vel-Direct-v0, microduck_rl port). Export:
 #   python scripts/vel/pt_to_onnx_vel.py --checkpoint <run>/checkpoints/agent_N.pt --output agent_vel.onnx
 # Check in sim: python scripts/vel/eval_vel.py --mode score --checkpoint agent_vel.onnx
-# agent_vel.onnx = arti_d1 v12 run 2026-11-10_13-08-29 agent_42000: v11 (servo model fitted to this robot's sysid:
-# delay ~22 ms, kp x1.5, kd x1.25, armature x3) + leg joint play 1-3 deg + torso angular velocity penalty x4, fine-tuned
-# from v11 agent_12000. Sim on that model, ONNX closed loop: 0/64 falls, fwd .040 / back -.025 m/s, turn .290 rad/s,
-# stand still, torso gyro std walking .17/.13/.07 rad/s. Previous: v11 agent_12000 (commit 9366931).
+# agent_vel.onnx = arti_d1 v20 run 2026-11-12_02-23-11 agent_84000 (ARTI_D1_VEL_PROFILE=v20): v12 servo model
+# (delay ~22 ms, kp x1.5, kd x1.25, armature x3, joint play 1-3 deg) + short quick steps (air time 0.06-0.22 s single
+# stance, swing 12 mm) on pelvis 3.24 kg +-10 %, CoM +-15 mm, TPU contact, pushes 0.4 m/s. Same obs / action / gains
+# as v12. Sim, ONNX closed loop: 0/64 falls, fwd .074 / back -.060 / side .016 m/s, turn .255 rad/s, 4.3 steps/s,
+# foot 14 mm, torso gyro std walking .13/.11/.08 rad/s. Previous: v12 agent_42000 (commit 27e44cc).
 model_file: ../config/robot/ARTI-D1/agent_vel.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
