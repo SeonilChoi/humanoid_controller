@@ -6,18 +6,18 @@ joy_handler_config_file: ../config/robot/ARTI-H1/joy.yaml
 urdf_file: ../config/robot/ARTI-H1/robot.urdf
 # Velocity-command policy (no gait clock, no AMP): run with
 #   ./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml
-# agent_vel_r15_240000.onnx = arti_h1_local Template-Arti-H1-Velocity-Direct-v0 (Isaac Lab 3.x / PhysX, skrl PPO),
-# RSI round r15 (11-11, logs/rsi/r15; run logs/skrl/arti_h1_velocity/2026-11-11_16-47-28_ppo_torch agent_240000),
-# fine-tuned from r14 with per-joint zero (homing) error randomisation (hip_yaw 0.03, hip_roll 0.06, hip_pitch 0.08,
-# knee 0.08, ankle_pitch 0.15, ankle_roll 0.06 rad) and shorter command holds (1.5-5 s, more stop / start). Same 81-D
-# observation, 5.24 rad/s slew limit, delays and target low-pass 0.6 as r14.
-# Sim eval with joint zero errors: 2 falls without pushes (r14: 37), 5.5 % kick falls (r14: 19.5 %), tilt rms 3.7 deg
-#   (r14: 5.8); right ankle_pitch reading -15 deg off: walking yaw drift +2.2 deg/s (r14: +28 deg/s).
-# Sim eval without zero errors: vx 0.63 / vy 0.19 / yaw 0.70 / 0.83, 0 falls, 7.8 % kick falls (r14: 0.71 / 0.27 /
-#   0.73 / 0.82, 3.1 %). Known weak spot: a small +0.1 rad/s (left) turn from standstill often does not start.
-# Previous models: agent_vel_r14_240000.onnx (no zero-error randomisation, cleaner tracking in the ideal sim);
+# agent_vel_r16_240000.onnx = arti_h1_local Template-Arti-H1-Velocity-Direct-v0 (Isaac Lab 3.x / PhysX, skrl PPO),
+# RSI round r16 (11-11, logs/rsi/r16; run logs/skrl/arti_h1_velocity/2026-11-11_20-51-15_ppo_torch agent_240000),
+# fine-tuned from r15 with a yaw-only tracking term (small turns from standstill now start). Same per-joint zero (homing)
+# error randomisation as r15 (hip_yaw 0.03, hip_roll 0.06, hip_pitch 0.08, knee 0.08, ankle_pitch 0.15, ankle_roll
+# 0.06 rad), command holds 1.5-5 s, 81-D observation, 5.24 rad/s slew limit, delays and target low-pass 0.6.
+# Sim eval with joint zero errors: vx 0.63 / vy 0.23 / yaw small 0.84 / large 0.88 (r15: 0.65 / 0.19 / 0.72 / 0.82),
+#   0 falls without pushes, 7.0 % kick falls, tilt rms 3.6 deg; +0.1 rad/s turn starts in 100 % of envs (r15: 31 %).
+# r15 (agent_vel_r15_240000.onnx): same training without the yaw term; right ankle_pitch -15 deg off -> walking yaw
+#   drift +2.2 deg/s (r14: +28 deg/s). r14: no zero-error randomisation (37 falls / 19.5 % kick falls with zero errors).
+# Previous models: agent_vel_r15_240000.onnx; agent_vel_r14_240000.onnx (no zero-error randomisation, cleaner tracking in the ideal sim);
 # agent_vel_r12_240000.onnx (trained without the low-pass); agent_vel_r05_240000.onnx (45-D, no target_rate_limit).
-model_file: ../config/robot/ARTI-H1/agent_vel_r15_240000.onnx
+model_file: ../config/robot/ARTI-H1/agent_vel_r16_240000.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
 log_file: ./arti_h1_vel_run
