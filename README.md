@@ -156,7 +156,7 @@ cd ~/humanoid_controller/build
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml                 # AMP policy (robot.yaml model_file)
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --ppo           # RL-only PPO policy (robot.yaml ppo_model_file)
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --model ../config/robot/ARTI-H1/agent_s2r_340000.onnx   # any other ONNX
-./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml        # velocity-command policy (r14, 81-D obs, no gait clock)
+./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml        # velocity-command policy (r15, 81-D obs, no gait clock)
 ```
 **Right-leg zero check** (11-11: in the default pose the right sole does not reach the floor, while motor.yaml uses
 the same homing_offset on both sides): `./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml --observe --limp-right`.
@@ -169,12 +169,12 @@ suggestion into motor.yaml once the numbers are steady, home again and check tha
 `--ppo` / `--model` combine with `--blind-imu` and `--observe`. With `--ppo` / `--model` the log file name includes
 the model name, so AMP and PPO runs stay apart.
 
-`robot_velocity.yaml` runs `agent_vel_r14_240000.onnx` with `policy.observation: velocity_history`: the 81-D
+`robot_velocity.yaml` runs `agent_vel_r15_240000.onnx` with `policy.observation: velocity_history`: the 81-D
 `ArtiH1VelocityEnv` observation (pelvis gyro, gravity in the pelvis frame, joint pos - default pose, joint vel, the last
 three actions, last joint target - default pose, raw command) instead of the 116-D AMP one, and
 `policy.target_rate_limit: 5.24` (rad/s): each control step the joint target moves at most 5.24 * control_dt from the
 previous one, as in training. `policy.target_lowpass_alpha: 0.6` low-passes the target before that limit
-(target = previous + 0.6 * (q_des - previous)); without it the r12 policy chattered at 30 Hz on the robot; r14 was trained with this low-pass in the loop. Full stick = vx 0.15 m/s, vy 0.08 m/s, yaw 0.4 rad/s; a released stick (zero command)
+(target = previous + 0.6 * (q_des - previous)); without it the r12 policy chattered at 30 Hz on the robot; r14 and r15 were trained with this low-pass in the loop; r15 is also trained against per-joint homing errors (up to 0.15 rad on ankle_pitch). Full stick = vx 0.15 m/s, vy 0.08 m/s, yaw 0.4 rad/s; a released stick (zero command)
 stands still. The previous 45-D model still works with `model_file: .../agent_vel_r05_240000.onnx`,
 `observation: velocity` and no `target_rate_limit`. `--observe` prints the velocity observation in both modes. Do not
 use `--model` with a velocity ONNX on `robot.yaml` (the AMP layout would be fed to it; the ONNX input size check stops
