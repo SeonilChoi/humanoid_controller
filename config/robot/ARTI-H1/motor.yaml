@@ -60,13 +60,13 @@ masters:
         homing_direction: -1
         homing_offset: -0.2854
         homing_velocity: 0.3
-        homing_kp: 0.3
+        homing_kp: 0.45    # 11-11: raised with the threshold (stall push ~ kp * 0.15 rad lead)
         homing_kd: 0.025
         homing_zero_kp: 1.2
         homing_zero_kd: 0.025
         homing_hold_kp: 0.5
         homing_hold_kd: 0.025
-        homing_torque_threshold: 1.0
+        homing_torque_threshold: 1.5    # 11-11: raised so friction alone is not taken for the stopper
         homing_velocity_threshold: 0.2
 
       - id: 4
@@ -80,13 +80,13 @@ masters:
         homing_direction: -1
         homing_offset: -0.2854
         homing_velocity: 0.3
-        homing_kp: 0.3
+        homing_kp: 0.45    # 11-11: raised with the threshold (stall push ~ kp * 0.15 rad lead)
         homing_kd: 0.025
         homing_zero_kp: 1.0
         homing_zero_kd: 0.025
         homing_hold_kp: 0.5
         homing_hold_kd: 0.025
-        homing_torque_threshold: 1.0
+        homing_torque_threshold: 1.5    # 11-11: raised so friction alone is not taken for the stopper
         homing_velocity_threshold: 0.1
 
       - id: 5
@@ -226,13 +226,13 @@ masters:
         homing_direction: -1
         homing_offset: -1.5216
         homing_velocity: 0.3
-        homing_kp: 10.0
+        homing_kp: 15.0    # 11-11: raised with the threshold (stall push ~ kp * 0.15 rad lead)
         homing_kd: 0.5
         homing_zero_kp: 30.0
         homing_zero_kd: 1.0
         homing_hold_kp: 5.0
         homing_hold_kd: 0.5
-        homing_torque_threshold: 0.8
+        homing_torque_threshold: 1.2    # 11-11: raised so friction alone is not taken for the stopper
         homing_velocity_threshold: 0.1
 
       - id: 12
@@ -246,11 +246,11 @@ masters:
         homing_direction: -1
         homing_offset: -1.5216
         homing_velocity: 0.3
-        homing_kp: 10.0
+        homing_kp: 15.0    # 11-11: raised with the threshold (stall push ~ kp * 0.15 rad lead)
         homing_kd: 0.5
         homing_zero_kp: 30.0
         homing_zero_kd: 1.0
         homing_hold_kp: 5.0
         homing_hold_kd: 0.5
-        homing_torque_threshold: 0.8
+        homing_torque_threshold: 1.2    # 11-11: raised so friction alone is not taken for the stopper
         homing_velocity_threshold: 0.1
