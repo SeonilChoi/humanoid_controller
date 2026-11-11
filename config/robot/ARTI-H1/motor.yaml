@@ -204,7 +204,7 @@ masters:
         min: -0.5
         max:  0.7453
         homing_direction: 1
-        homing_offset: 0.9153    # 11-11 right zero fix: +4.7 deg (limp fit) then +5.0 deg (16:08 walk spun left 18 deg/s; sim: right ankle_pitch reading too high spins left); was 0.7453 like id 9
+        homing_offset: 0.7453
         homing_velocity: 0.3
         homing_kp: 10.0
         homing_kd: 0.5
@@ -244,7 +244,7 @@ masters:
         min: -1.5216
         max:  0.5
         homing_direction: -1
-        homing_offset: -1.5792    # 11-11 right zero fix (-3.3 deg, --limp-right fit); was -1.5216 like id 11
+        homing_offset: -1.5216
         homing_velocity: 0.3
         homing_kp: 15.0    # 11-11: raised with the threshold (stall push ~ kp * 0.15 rad lead)
         homing_kd: 0.5
