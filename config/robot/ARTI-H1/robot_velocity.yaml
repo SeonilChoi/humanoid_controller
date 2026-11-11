@@ -6,18 +6,18 @@ joy_handler_config_file: ../config/robot/ARTI-H1/joy.yaml
 urdf_file: ../config/robot/ARTI-H1/robot.urdf
 # Velocity-command policy (no gait clock, no AMP): run with
 #   ./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml
-# agent_vel_r12_240000.onnx = arti_h1_local Template-Arti-H1-Velocity-Direct-v0 (Isaac Lab 3.x / PhysX, skrl PPO),
-# RSI round r12 (11-10, logs/rsi/r12; run logs/skrl/arti_h1_velocity/2026-11-10_15-03-32_ppo_torch agent_240000),
-# fine-tuned from r05 with the Open Duck Mini sim-to-real items: 81-D observation (last 3 actions + joint target),
-# joint target slew limit 5.24 rad/s, actuator delay jittered 0-1 control step and IMU gyro delay 0-2 steps redrawn
-# every step, plus foot-swing reference and straight hip-yaw costs.
-# Sim eval (64 env x 10 s per scenario, every scenario from standstill, PhysX), with the r12 delays / rate limit:
-#   tracking vx 0.75 / vy 0.31 / yaw small 0.78 / yaw large 0.84; 0 falls without pushes; 3.1 % falls under
-#   0.4 m/s kicks every 2 s; body roll/pitch rate rms 0.48 rad/s; pelvis pitch std 1.8 deg; hip yaw while walking
-#   straight <= 0.5 deg (r05: 7.7 deg). r05 in the same conditions: 4 falls, 10.2 % kick falls, 0.74 rad/s.
-# Previous model (45-D): model_file agent_vel_r05_240000.onnx with policy.observation: velocity and no
-# target_rate_limit.
-model_file: ../config/robot/ARTI-H1/agent_vel_r12_240000.onnx
+# agent_vel_r14_240000.onnx = arti_h1_local Template-Arti-H1-Velocity-Direct-v0 (Isaac Lab 3.x / PhysX, skrl PPO),
+# RSI round r14 (11-11, logs/rsi/r14; run logs/skrl/arti_h1_velocity/2026-11-11_09-26-43_ppo_torch agent_240000),
+# fine-tuned from r12 with the joint target low-pass (target_lowpass_alpha 0.6) in the training loop, so the
+# policy now matches the low-pass below. Same 81-D observation, 5.24 rad/s slew limit, actuator delay 0-1 step and
+# IMU gyro delay 0-2 steps redrawn every step as r12.
+# Sim eval (64 env x 10 s per scenario, from standstill, PhysX, r12 delays + rate limit + low-pass 0.6):
+#   tracking vx 0.71 / vy 0.27 / yaw small 0.73 / yaw large 0.82; 0 falls without pushes; 3.1 % falls under
+#   0.4 m/s kicks; body roll/pitch rate rms 0.39 rad/s; pelvis pitch std 1.75 deg; foot lift 2.6-3.1 cm.
+#   r12 with low-pass 0.6 (not trained with it): vx 0.68 / vy 0.26 / yaw 0.64 / 0.70, 4.7 % kick falls.
+# Previous models: agent_vel_r12_240000.onnx (same settings, trained without the low-pass);
+# agent_vel_r05_240000.onnx (45-D, policy.observation: velocity, no target_rate_limit).
+model_file: ../config/robot/ARTI-H1/agent_vel_r14_240000.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
 log_file: ./arti_h1_vel_run
