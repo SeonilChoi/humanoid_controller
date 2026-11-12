@@ -5,6 +5,7 @@ cat << 'EOF' | sudo tee /etc/udev/rules.d/99-humanoid-controller.rules
 ACTION=="add", KERNEL=="ttyACM*", SUBSYSTEM=="tty", ATTRS{idVendor}=="16d0", ATTRS{idProduct}=="117e", ATTRS{serial}=="2061317B5230", MODE="0666", SYMLINK+="CANable"
 KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ATTRS{serial}=="FTBW2W11", MODE="0666", SYMLINK+="Unitree"
 KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ATTRS{serial}=="FTBENY4L", MODE="0666", SYMLINK+="Dynamixel"
+KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ATTRS{serial}=="FTBP1SO2", MODE="0666", SYMLINK+="Dynamixel"
 KERNEL=="ttyUSB*", ATTRS{idVendor}=="2639", MODE="0666", SYMLINK+="Xsens"
 ACTION=="add", SUBSYSTEM=="usb-serial", ATTR{latency_timer}="1"
 EOF
