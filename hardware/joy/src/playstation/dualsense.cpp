@@ -19,10 +19,17 @@ playstation::DualSense::~DualSense() {
 void playstation::DualSense::initialize() {
     if (initialized_) return;
 
+    // A missing pad is not fatal: start disconnected (all inputs zero) and let update() retry every second, the same
+    // as after a drop, so the robot can start before the pad is paired / powered.
     fd_ = open(device_.c_str(), O_RDONLY | O_NONBLOCK);
-    if (fd_ < 0) throw std::runtime_error("[DualSense::initialize] Failed to open device: " + device_);
-
-    connected_.store(true);
+    if (fd_ < 0) {
+        std::cerr << "[DualSense] " << device_ << " not found (" << std::strerror(errno)
+                  << "): all inputs zero, retrying every second" << std::endl;
+        connected_.store(false);
+        next_retry_ = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    } else {
+        connected_.store(true);
+    }
     initialized_ = true;
 }
 
