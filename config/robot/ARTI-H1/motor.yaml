@@ -2,6 +2,8 @@
 # homing_* gains). DRIVER units: Unitree = rotor side (joint side x gear_ratio^2 = x 40.07), CubeMars MIT = output side.
 # min / max: joint limits after homing (rad). The homing side equals homing_offset (the stopper), so no command
 # ever pushes past the stopper; the other side is the free end of the joint.
+# Branch arti-h1-new-pelvis: hip_pitch / knee / ankle_pitch use the -20/40/-20 URDF zero (was -45/90/-45), same physical
+# stoppers: q_new = q_old + (hip_pitch +25, knee -50, ankle_pitch -25 deg), so min / max / homing_offset are shifted.
 masters:
   - id: 0
     period: 8000 # microseconds
@@ -95,10 +97,10 @@ masters:
         kd: 0.025
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.7404
-        max:  0.5
+        min: -0.3041
+        max:  0.9363
         homing_direction: -1
-        homing_offset: -0.7404
+        homing_offset: -0.3041
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.025
@@ -115,10 +117,10 @@ masters:
         kd: 0.025
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.7404
-        max:  0.5
+        min: -0.3041
+        max:  0.9363
         homing_direction: -1
-        homing_offset: -0.7404
+        homing_offset: -0.3041
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.025
@@ -135,10 +137,10 @@ masters:
         kd: 0.025
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.5
-        max:  1.5258
+        min: -1.3727
+        max:  0.6531
         homing_direction: 1
-        homing_offset: 1.5258
+        homing_offset: 0.6531
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.025
@@ -155,10 +157,10 @@ masters:
         kd: 0.025
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.5
-        max:  1.5258
+        min: -1.3727
+        max:  0.6531
         homing_direction: 1
-        homing_offset: 1.5258
+        homing_offset: 0.6531
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.025
@@ -181,10 +183,10 @@ masters:
         kd: 0.5
         axis: -1
         pulse_per_revolution: 65536
-        min: -0.5
-        max:  0.7453
+        min: -0.9363
+        max:  0.3090
         homing_direction: 1
-        homing_offset: 0.7453
+        homing_offset: 0.3090
         homing_velocity: 0.3
         homing_kp: 10.0
         homing_kd: 0.5
@@ -201,10 +203,10 @@ masters:
         kd: 0.5
         axis: -1
         pulse_per_revolution: 65536
-        min: -0.5
-        max:  0.7453
+        min: -0.9363
+        max:  0.3090
         homing_direction: 1
-        homing_offset: 0.7453
+        homing_offset: 0.3090
         homing_velocity: 0.3
         homing_kp: 10.0
         homing_kd: 0.5

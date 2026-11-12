@@ -6,18 +6,18 @@ joy_handler_config_file: ../config/robot/ARTI-H1/joy.yaml
 urdf_file: ../config/robot/ARTI-H1/robot.urdf
 # Velocity-command policy (no gait clock, no AMP): run with
 #   ./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml
-# agent_vel_r16_240000.onnx = arti_h1_local Template-Arti-H1-Velocity-Direct-v0 (Isaac Lab 3.x / PhysX, skrl PPO),
-# RSI round r16 (11-11, logs/rsi/r16; run logs/skrl/arti_h1_velocity/2026-11-11_20-51-15_ppo_torch agent_240000),
-# fine-tuned from r15 with a yaw-only tracking term (small turns from standstill now start). Same per-joint zero (homing)
-# error randomisation as r15 (hip_yaw 0.03, hip_roll 0.06, hip_pitch 0.08, knee 0.08, ankle_pitch 0.15, ankle_roll
-# 0.06 rad), command holds 1.5-5 s, 81-D observation, 5.24 rad/s slew limit, delays and target low-pass 0.6.
-# Sim eval with joint zero errors: vx 0.63 / vy 0.23 / yaw small 0.84 / large 0.88 (r15: 0.65 / 0.19 / 0.72 / 0.82),
-#   0 falls without pushes, 7.0 % kick falls, tilt rms 3.6 deg; +0.1 rad/s turn starts in 100 % of envs (r15: 31 %).
-# r15 (agent_vel_r15_240000.onnx): same training without the yaw term; right ankle_pitch -15 deg off -> walking yaw
-#   drift +2.2 deg/s (r14: +28 deg/s). r14: no zero-error randomisation (37 falls / 19.5 % kick falls with zero errors).
-# Previous models: agent_vel_r15_240000.onnx; agent_vel_r14_240000.onnx (no zero-error randomisation, cleaner tracking in the ideal sim);
-# agent_vel_r12_240000.onnx (trained without the low-pass); agent_vel_r05_240000.onnx (45-D, no target_rate_limit).
-model_file: ../config/robot/ARTI-H1/agent_vel_r16_240000.onnx
+# agent_vel_r21_240000.onnx = NEW PELVIS + NEW JOINT ZERO (branch arti-h1-new-pelvis, 11-12). arti_h1_local
+# Template-Arti-H1-Velocity-Direct-v0 (Isaac Lab 3.x / PhysX, skrl PPO), RSI round r21 (logs/rsi/r21; run
+# logs/skrl/arti_h1_velocity/2026-11-12_10-36-24_ppo_torch agent_240000), fine-tuned from r20 on the patched USD:
+# pelvis hip_yaw mount 280.65 -> 317.07 mm (trunk 0.32367), leg zero -45/90/-45 -> -20/40/-20 deg, so
+# q_new = q_old + (hip_pitch +25, knee -50, ankle_pitch -25 deg). motor.yaml homing offsets / limits on this branch
+# match that zero: re-home before running, and do NOT run the older (r05-r16) models with this motor.yaml.
+# Per-joint zero error randomisation (hip_yaw 0.03, hip_roll 0.06, hip_pitch 0.08, knee 0.08, ankle_pitch 0.20,
+# ankle_roll 0.06 rad), yaw-only tracking term, command holds 1.5-5 s, 81-D observation, 5.24 rad/s slew limit,
+# delays and target low-pass 0.6.
+# Sim eval with joint zero errors: vx 0.65 / vy 0.26 / yaw small 0.80 / large 0.82, 1 fall without pushes (arc),
+#   4.7 % kick falls (r16: 7.0 %), fwd-kick falls 9.4 % (r16-r20: ~14 %), tilt rms 3.7 deg.
+model_file: ../config/robot/ARTI-H1/agent_vel_r21_240000.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
 log_file: ./arti_h1_vel_run
@@ -52,8 +52,9 @@ sensors:
   - name: imu_body
     index: 0
     frame: pelvis
-    # MTi-3 in the pelvis frame (arti_h1_env_cfg.py ARTI_H1_IMU_OFFSET_FROM_PELVIS = trunk 0.28725 + 0.023, x +0.04688).
-    translation: [0.04688, 0.0, 0.31025]
+    # MTi-3 in the pelvis frame (arti_h1_env_cfg.py ARTI_H1_IMU_OFFSET_FROM_PELVIS = trunk 0.32367 + 0.023, x +0.04688;
+    # new pelvis, was trunk 0.28725 -> z 0.31025).
+    translation: [0.04688, 0.0, 0.34667]
     orientation: [0.0, 0.0, 0.0, 1.0]
 
 # Sole centre in each foot link (ARTI_H1_*_FOOT_OFFSET_FROM_FOOT_LINK; the right leg is the left one rotated by pi).
@@ -94,5 +95,6 @@ policy:
   command_scale: [1.0, 1.0, 1.0]
   # full stick = training command range: command_linear_x_range 0.15, command_linear_y_range 0.08, command_yaw_range 0.4
   command_max: [0.15, 0.08, 0.4]
-  default_pose: [0.0, 0.0, 0.0, 0.0, -0.10078, -0.10078, 0.20157, 0.20157, 0.10078, 0.10079, 0.0, 0.0]
+  # arti-h1-new-pelvis: -20/40/-20 joint zero (old-zero pose -0.10078 / 0.20157 / 0.10078 + (+25, -50, -25) deg)
+  default_pose: [0.0, 0.0, 0.0, 0.0, 0.33555, 0.33555, -0.67109, -0.67109, -0.33555, -0.33554, 0.0, 0.0]
   # PD gains while walking: motor.yaml 'kp' / 'kd' of each motor (motor_command_ values, driver units).
