@@ -157,6 +157,8 @@ cd ~/humanoid_controller/build
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --ppo           # RL-only PPO policy (robot.yaml ppo_model_file)
 ./ARTI-H1 ../config/robot/ARTI-H1/robot.yaml --model ../config/robot/ARTI-H1/agent_s2r_340000.onnx   # any other ONNX
 ./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml        # velocity-command policy (r21, new pelvis / -20-40-20 zero, 81-D obs)
+./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml --imu-calib     # force the IMU stabilisation (gyro bias + attitude convergence)
+./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml --no-imu-calib  # skip it (default: policy.imu_still_time in the yaml)
 ```
 **Right-leg zero check** (11-11: in the default pose the right sole does not reach the floor, while motor.yaml uses
 the same homing_offset on both sides): `./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml --observe --limp-right`.

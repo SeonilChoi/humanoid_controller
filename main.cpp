@@ -17,7 +17,7 @@ void on_sigint(int) { running = 0; }
 int main(int argc, char* argv[])
 {
     const auto usage = [&]() {
-        std::cerr << "Usage: " << argv[0] << " <config_file> [--ppo | --model <file.onnx>] [--observe [--limp-right] | --blind-imu]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <config_file> [--ppo | --model <file.onnx>] [--observe [--limp-right] | --blind-imu] [--imu-calib | --no-imu-calib]" << std::endl;
         std::cerr << "  --ppo        run the RL-only (PPO) policy: robot.yaml ppo_model_file instead of model_file (AMP)" << std::endl;
         std::cerr << "  --model F    run the ONNX policy F instead of robot.yaml model_file (same obs / q_des interface)" << std::endl;
         std::cerr << "  --observe    home, stand in the default pose and print the observation at 5 Hz (no policy)" << std::endl;
@@ -25,6 +25,9 @@ int main(int argc, char* argv[])
         std::cerr << "               (SUPPORT THE ROBOT: it cannot stand on the right leg in this mode)" << std::endl;
         std::cerr << "  --blind-imu  test: the policy gets the standing tilt and zero angular velocity instead of the IMU" << std::endl;
         std::cerr << "               (the IMU is still logged and still stops the robot on a fall)" << std::endl;
+        std::cerr << "  --imu-calib  IMU stabilisation after standing up: gyro bias average (policy.imu_still_time, 10 s if 0) and" << std::endl;
+        std::cerr << "               wait until the IMU roll / pitch agrees with the accelerometer (keep the robot still)" << std::endl;
+        std::cerr << "  --no-imu-calib  skip the IMU stabilisation (no gyro bias removal). Default: policy.imu_still_time in the yaml" << std::endl;
     };
     if (argc < 2) {
         usage();
@@ -36,12 +39,17 @@ int main(int argc, char* argv[])
     bool observe = false;
     bool blind_imu = false;
     bool limp_right = false;
+    int imu_calib = -1;   // -1 = yaml (policy.imu_still_time), 0 = off, 1 = on
     for (int i = 2; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--observe") {
             observe = true;
         } else if (arg == "--limp-right") {
             limp_right = true;
+        } else if (arg == "--imu-calib") {
+            imu_calib = 1;
+        } else if (arg == "--no-imu-calib") {
+            imu_calib = 0;
         } else if (arg == "--blind-imu") {
             blind_imu = true;
         } else if (arg == "--ppo") {
@@ -68,6 +76,10 @@ int main(int argc, char* argv[])
     std::signal(SIGINT, on_sigint);
 
     robot::ArtiH1 robot(config_file, model_file);
+
+    if (imu_calib >= 0) robot.set_imu_calibration(imu_calib == 1);
+    std::cout << "[main] IMU stabilisation: " << (robot.imu_still_time() > 0.0 ? "ON (" + std::to_string(robot.imu_still_time()) + " s gyro bias + attitude convergence)" : std::string("OFF"))
+              << (imu_calib < 0 ? "  [from yaml]" : "  [from flag]") << std::endl;
 
     if (blind_imu) {
         robot.set_blind_imu(true);

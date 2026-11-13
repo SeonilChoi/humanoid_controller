@@ -37,6 +37,10 @@ public:
     // Test mode (main.cpp --blind-imu): the policy gets the pelvis tilt latched at the first observation and zero
     // angular velocity instead of the IMU; the real IMU is still logged and still used for the max_tilt fall check.
     void set_blind_imu(bool blind) { blind_imu_ = blind; }
+    // IMU stabilisation before the policy starts (main.cpp --imu-calib / --no-imu-calib), overrides policy.imu_still_time:
+    // on = gyro bias average over imu_still_time (10 s if the yaml has 0) + wait for the attitude to converge; off = skip.
+    void set_imu_calibration(bool on) { imu_still_time_ = on ? (imu_still_time_ > 0.0 ? imu_still_time_ : 10.0) : 0.0; }
+    double imu_still_time() const { return imu_still_time_; }
 
     // Zero check (main.cpp --observe --limp-right): after initialize() the right-leg motors get kp 0 (policy kd only,
     // so the leg is limp but damped) while the left leg keeps holding the default pose. Hold the pelvis level with

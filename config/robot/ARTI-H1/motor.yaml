@@ -4,6 +4,8 @@
 # ever pushes past the stopper; the other side is the free end of the joint.
 # Branch arti-h1-new-pelvis: hip_pitch / knee / ankle_pitch use the -20/40/-20 URDF zero (was -45/90/-45), same physical
 # stoppers: q_new = q_old + (hip_pitch +25, knee -50, ankle_pitch -25 deg), so min / max / homing_offset are shifted.
+# 11-13 (user): right-leg zero from the --observe --limp-right report (right-left reading difference, ~2 s averages,
+# 5 reports): ids 2/4/6/8/10/12 homing_offset = suggested value; min / max shifted by the same amount (same stoppers).
 masters:
   - id: 0
     period: 8000 # microseconds
@@ -37,10 +39,10 @@ masters:
         kd: 0.025
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.7056
-        max:  0.7056
+        min: -0.7301
+        max:  0.6811
         homing_direction: 1
-        homing_offset: 0.7056
+        homing_offset: 0.6811
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.025
@@ -77,10 +79,10 @@ masters:
         kd: 0.025
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.2854
-        max:  0.4
+        min: -0.3568
+        max:  0.3286
         homing_direction: -1
-        homing_offset: -0.2854
+        homing_offset: -0.3568
         homing_velocity: 0.3
         homing_kp: 0.45    # 11-11: raised with the threshold (stall push ~ kp * 0.15 rad lead)
         homing_kd: 0.025
@@ -117,10 +119,10 @@ masters:
         kd: 0.025
         axis: 1
         pulse_per_revolution: 32768
-        min: -0.3041
-        max:  0.9363
+        min: -0.1191
+        max:  1.1213
         homing_direction: -1
-        homing_offset: -0.3041
+        homing_offset: -0.1191
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.025
@@ -157,10 +159,10 @@ masters:
         kd: 0.025
         axis: 1
         pulse_per_revolution: 32768
-        min: -1.3727
-        max:  0.6531
+        min: -1.5348
+        max:  0.4910
         homing_direction: 1
-        homing_offset: 0.6531
+        homing_offset: 0.4910
         homing_velocity: 0.3
         homing_kp: 0.3
         homing_kd: 0.025
@@ -203,10 +205,10 @@ masters:
         kd: 0.5
         axis: -1
         pulse_per_revolution: 65536
-        min: -0.9363
-        max:  0.3090
+        min: -0.8544
+        max:  0.3909
         homing_direction: 1
-        homing_offset: 0.3090
+        homing_offset: 0.3909
         homing_velocity: 0.3
         homing_kp: 10.0
         homing_kd: 0.5
@@ -243,10 +245,10 @@ masters:
         kd: 0.5
         axis: -1
         pulse_per_revolution: 65536
-        min: -1.5216
-        max:  0.5
+        min: -1.6362
+        max:  0.3854
         homing_direction: -1
-        homing_offset: -1.5216
+        homing_offset: -1.6362
         homing_velocity: 0.3
         homing_kp: 15.0    # 11-11: raised with the threshold (stall push ~ kp * 0.15 rad lead)
         homing_kd: 0.5
