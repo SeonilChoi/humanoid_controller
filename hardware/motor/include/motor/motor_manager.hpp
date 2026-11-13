@@ -36,6 +36,10 @@ public:
 
     bool is_running() const { return running_.load(); }
 
+    // link fault: a master update threw (serial write / timeout) in its last cycle, or a motor missed too many replies
+    // in a row. The motor threads keep running and retrying (the robot holds its pose, see ArtiH1::control).
+    bool comm_fault() const;
+
     const motor_interface::motor_homing_t& homing(uint8_t index) const { return homing_[index]; }
 
     const motor_interface::motor_gains_t& gains(uint8_t index) const { return gains_[index]; }
@@ -62,6 +66,8 @@ private:
     uint8_t master_ids_[motor_interface::MAX_MOTORS]{};
 
     std::atomic<bool> running_{false};
+
+    std::atomic<bool> comm_error_{false};
 
     std::atomic<bool> stopped_{false};
 

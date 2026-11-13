@@ -197,7 +197,23 @@ private:
 
     void write_log_row();
 
-    // Damping only (kp 0) on every joint, then throw: used when the robot falls or the motor link dies.
+    // Fault hold (11-13, user): an IMU stop (no new samples for imu_stale_time), a motor link fault (MotorManager
+    // comm_fault) or a lost joystick no longer damps the joints and exits. The policy stops, every joint is held by
+    // the policy kp / kd at the last joint target, which then moves to the default stance over fault_settle_time
+    // (robot.yaml policy.fault_settle_time, s; 0 = freeze exactly where it was), and the program keeps running and
+    // logging (CSV column 'fault') until Ctrl+C. The hold is latched: a fault that clears is reported but the policy
+    // does not restart. A fall (tilt > max_tilt) still damps the joints and exits.
+    enum FaultBits : int { FAULT_IMU = 1, FAULT_MOTOR_COMM = 2, FAULT_JOY = 4, FAULT_HOLDING = 8 };
+    int fault_status() const;
+    void report_faults(int status);
+    void hold_control();
+    int fault_{0};                                   // last fault_status() | FAULT_HOLDING while holding
+    bool holding_{false};
+    std::array<double, 12> hold_from_{};             // policy order: joint target when the hold started
+    std::chrono::steady_clock::time_point hold_start_{};
+    double fault_settle_time_{1.0};
+
+    // Damping only (kp 0) on every joint, then throw: used when the robot falls.
     [[noreturn]] void safe_stop(const std::string& reason);
 };
 

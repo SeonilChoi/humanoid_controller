@@ -1,6 +1,7 @@
 #ifndef MOTOR_MASTER_UNITREE_MASTER_HPP_
 #define MOTOR_MASTER_UNITREE_MASTER_HPP_
 
+#include <atomic>
 #include <cerrno>
 #include <string>
 #include <chrono>
@@ -114,15 +115,29 @@ public:
                 const std::size_t rx_size = receive_packet(rx, sizeof(rx));
 
                 driver.decode(rx, rx_size, status[i]);
+                if (failures_[i] >= MAX_CONSECUTIVE_FAILURES) {
+                    std::cerr << "[UnitreeMaster::update] id " << static_cast<int>(id) << ": link back." << std::endl;
+                }
                 failures_[i] = 0;
             } catch (const std::exception& e) {
-                if (++failures_[i] >= MAX_CONSECUTIVE_FAILURES) throw;
-
-                std::cerr << "[UnitreeMaster::update] id " << static_cast<int>(id) << ": " << e.what() << std::endl;
+                // repeated misses no longer stop the thread: keep sending the last command and keep retrying; the robot
+                // sees comm_lost() and holds its pose (ArtiH1::control)
+                ++failures_[i];
+                if (failures_[i] < MAX_CONSECUTIVE_FAILURES) {
+                    std::cerr << "[UnitreeMaster::update] id " << static_cast<int>(id) << ": " << e.what() << std::endl;
+                } else if (failures_[i] == MAX_CONSECUTIVE_FAILURES) {
+                    std::cerr << "[UnitreeMaster::update] id " << static_cast<int>(id) << ": " << e.what()
+                              << " - link LOST (" << MAX_CONSECUTIVE_FAILURES << " misses in a row), retrying." << std::endl;
+                }
                 ::tcflush(fd_, TCIFLUSH);
             }
         }
+        bool lost = false;
+        for (uint8_t i = 0; i < n_ids_; ++i) lost = lost || failures_[i] >= MAX_CONSECUTIVE_FAILURES;
+        lost_.store(lost);
     }
+
+    bool comm_lost() const override { return lost_.load(); }
 
 private:
     void send_packet(const uint8_t* tx, std::size_t size) {
@@ -232,6 +247,8 @@ private:
     int fd_{-1};
 
     int failures_[motor_interface::MAX_MOTORS]{};
+
+    std::atomic<bool> lost_{false};
 };
 
 }

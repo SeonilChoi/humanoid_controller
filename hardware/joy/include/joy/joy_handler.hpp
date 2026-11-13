@@ -29,6 +29,9 @@ public:
 
     void read(joy_interface::joy_data_t& data);
 
+    // pad present and the reader thread alive
+    bool connected() const { return running_.load() && joy_ && joy_->connected(); }
+
 private:
     void load(const std::string& config_file);
 

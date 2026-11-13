@@ -89,6 +89,10 @@ policy:
   imu_converge_timeout: 180
   imu_attitude_gain: 0.5
   imu_stale_time: 0.2
+  # IMU stop / motor link fault / joystick lost: the policy stops and every joint holds the last target, moving to the
+  # default stance over this many seconds (0 = freeze exactly where it was); the program keeps running and logging
+  # (CSV column 'fault': 1 IMU, 2 motor link, 4 joystick, 8 holding) until Ctrl+C. A fall still damps and exits.
+  fault_settle_time: 1.0
   # released stick = exactly the zero command (the policy stands still)
   stick_deadzone: 0.1
   # the velocity env observes the raw command

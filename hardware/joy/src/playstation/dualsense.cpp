@@ -29,6 +29,7 @@ void playstation::DualSense::initialize() {
     if (fd_ < 0) throw std::runtime_error("[DualSense::initialize] Failed to open device: " + device_);
 
     initialized_ = true;
+    connected_.store(true);
 }
 
 void playstation::DualSense::disconnect(int error) {
@@ -36,6 +37,7 @@ void playstation::DualSense::disconnect(int error) {
         ::close(fd_);
         fd_ = -1;
     }
+    connected_.store(false);
     {
         // a dropped pad sends no release events: clear everything so the robot gets the zero command (stand)
         std::lock_guard<std::mutex> lock(mutex_);
@@ -52,7 +54,10 @@ void playstation::DualSense::try_reconnect() {
     next_open_ = now + RECONNECT_PERIOD;
     fd_ = open(device_.c_str(), O_RDONLY | O_NONBLOCK);
     // the kernel replays the current button / axis state as JS_EVENT_INIT events, read below
-    if (fd_ >= 0) std::cerr << "[DualSense] " << device_ << " reconnected." << std::endl;
+    if (fd_ >= 0) {
+        connected_.store(true);
+        std::cerr << "[DualSense] " << device_ << " reconnected." << std::endl;
+    }
 }
 
 void playstation::DualSense::update() {

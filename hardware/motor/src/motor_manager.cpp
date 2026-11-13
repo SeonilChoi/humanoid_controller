@@ -155,6 +155,14 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
     }
 }
 
+bool motor_manager::MotorManager::comm_fault() const {
+    if (comm_error_.load()) return true;
+    for (const auto& kv : masters_) {
+        if (kv.second->comm_lost()) return true;
+    }
+    return false;
+}
+
 void motor_manager::MotorManager::run(uint8_t id) {
 
     try{
@@ -164,6 +172,7 @@ void motor_manager::MotorManager::run(uint8_t id) {
 
         const auto cycle = std::chrono::microseconds(master.period());
         auto next_wakeup = std::chrono::steady_clock::now();
+        unsigned error_prints = 0;
 
         while (running_.load()) {
             next_wakeup += cycle;
@@ -180,7 +189,17 @@ void motor_manager::MotorManager::run(uint8_t id) {
                 }
             }
 
-            master.update(command, status);
+            try {
+                master.update(command, status);
+                comm_error_.store(false);
+            } catch (const std::exception& e) {
+                // keep the thread alive: a dead thread can never send the hold command again
+                if (!comm_error_.exchange(true) || ++error_prints % 60 == 0) {
+                    std::cerr << "[MotorManager::run] master " << static_cast<int>(id) << ": " << e.what()
+                              << " (link fault, retrying)" << std::endl;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
 
             {
                 std::lock_guard<std::mutex> lock(mutex_);

@@ -22,6 +22,9 @@ public:
 
     virtual void read(joy_data_t& data) = 0;
 
+    // false while the pad is lost (the command is zero and the driver is reconnecting)
+    virtual bool connected() const { return true; }
+
     const std::string device() const { return device_; }
 
     uint32_t period() const { return period_; }

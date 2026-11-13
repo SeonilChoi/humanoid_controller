@@ -160,6 +160,15 @@ cd ~/humanoid_controller/build
 ./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml --imu-calib     # force the IMU stabilisation (gyro bias + attitude convergence)
 ./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml --no-imu-calib  # skip it (default: policy.imu_still_time in the yaml)
 ```
+**On a fault** (11-13): the program no longer damps the joints and exits on an IMU stop (no new MTi samples for
+`policy.imu_stale_time`), a motor link fault (a Unitree motor missing 5 replies in a row, or a serial write / timeout
+error) or a lost joystick. Instead the policy stops, every joint holds its last target with the policy kp / kd and moves
+to the default stance over `policy.fault_settle_time` (1 s; 0 = freeze where it was), and the controller keeps running
+and logging. The terminal prints `[ArtiH1] t=... s FAULT: ...` (and `cleared: ...` if it comes back; the hold stays,
+restart to walk again); the CSV column `fault` has the bits 1 IMU, 2 motor link, 4 joystick, 8 holding. What to do:
+support the robot, read the FAULT line, then `Ctrl+C` (the log is flushed) and fix the cause before restarting. A fall
+(tilt > `policy.max_tilt`) still damps the joints and exits, and a link fault during homing still aborts homing.
+
 **Right-leg zero check** (11-11: in the default pose the right sole does not reach the floor, while motor.yaml uses
 the same homing_offset on both sides): `./ARTI-H1 ../config/robot/ARTI-H1/robot_velocity.yaml --observe --limp-right`.
 After homing and the IMU calibration the right-leg motors go limp (kp 0, damping only) and the left leg keeps the default

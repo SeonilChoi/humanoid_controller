@@ -35,6 +35,10 @@ public:
 
     virtual void update(const motor_command_t* commands, motor_state_t* status) = 0;
 
+    // true while at least one motor of this master has missed too many replies in a row (link lost, the master keeps
+    // sending the last command and retrying instead of stopping)
+    virtual bool comm_lost() const { return false; }
+
     uint32_t period() const { return period_; }
 
     const uint8_t* ids() const { return ids_; }

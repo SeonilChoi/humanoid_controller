@@ -1,6 +1,7 @@
 #ifndef JOY_PLAYSTATION_DUALSENSE_HPP_
 #define JOY_PLAYSTATION_DUALSENSE_HPP_
 
+#include <atomic>
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -26,6 +27,8 @@ public:
 
     void read(joy_interface::joy_data_t& data) override;
 
+    bool connected() const override { return connected_.load(); }
+
 private:
     joy_interface::joy_data_t data_;
 
@@ -34,6 +37,8 @@ private:
     std::mutex mutex_;
 
     bool initialized_{false};
+
+    std::atomic<bool> connected_{false};
 
     // Bluetooth drop: the device read fails, the fd is closed and the stick state cleared (zero command); update()
     // then retries opening the device every RECONNECT_PERIOD until the pad is back.

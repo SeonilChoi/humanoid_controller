@@ -167,6 +167,7 @@ robot::ArtiH1::ArtiH1(const std::string& config_file, const std::string& model_f
     if (policy["imu_converge_timeout"]) imu_converge_timeout_ = policy["imu_converge_timeout"].as<double>();
     if (policy["imu_attitude_gain"]) imu_attitude_gain_ = policy["imu_attitude_gain"].as<double>();
     if (policy["imu_stale_time"]) imu_stale_time_ = policy["imu_stale_time"].as<double>();
+    if (policy["fault_settle_time"]) fault_settle_time_ = policy["fault_settle_time"].as<double>();
     if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
     if (policy["stand_command_threshold"]) stand_command_threshold_ = policy["stand_command_threshold"].as<double>();
     if (policy["stick_deadzone"]) stick_deadzone_ = policy["stick_deadzone"].as<double>();
@@ -199,6 +200,8 @@ robot::ArtiH1::ArtiH1(const std::string& config_file, const std::string& model_f
             std::fprintf(log_file_, ",imu_qw,imu_qx,imu_qy,imu_qz,imu_gx,imu_gy,imu_gz,imu_ax,imu_ay,imu_az,imu_temp,att_qw,att_qx,att_qy,att_qz");
             // motor error code (Unitree: 1 overheat, 2 overcurrent, 3 overvoltage, 4 encoder fault)
             for (const char* name : kPolicyJointNames) std::fprintf(log_file_, ",err_%s", name);
+            // fault bits: 1 IMU stopped, 2 motor link, 4 joystick lost, 8 holding (policy stopped, pose held)
+            std::fprintf(log_file_, ",fault");
             std::fprintf(log_file_, "\n");
             std::cout << "[ArtiH1] Logging every control step to " << path << std::endl;
         }
@@ -351,6 +354,7 @@ void robot::ArtiH1::write_log_row() {
     for (const char* name : kPolicyJointNames) {
         std::fprintf(log_file_, ",%d", last_motor_status_[joint_id_to_motor_index_.at(kinematics_->joint_id(name))].error);
     }
+    std::fprintf(log_file_, ",%d", fault_);
     std::fprintf(log_file_, "\n");
 }
 
@@ -487,7 +491,8 @@ void robot::ArtiH1::home(uint8_t index) {
     while (stall_count < HOMING_STALL_COUNT) {
         next_wakeup += HOMING_PERIOD;
         std::this_thread::sleep_until(next_wakeup);
-        if (!motor_manager_->is_running()) {
+        // homing must not run on stale states (a frozen reading looks like a stall and sets a wrong zero)
+        if (!motor_manager_->is_running() || motor_manager_->comm_fault()) {
             throw std::runtime_error("[ArtiH1::home] Motor communication stopped on motor index " + std::to_string(index) + ".");
         }
 
@@ -556,7 +561,8 @@ void robot::ArtiH1::home(uint8_t index) {
     while (target != 0.0) {
         next_wakeup += HOMING_PERIOD;
         std::this_thread::sleep_until(next_wakeup);
-        if (!motor_manager_->is_running()) {
+        // homing must not run on stale states (a frozen reading looks like a stall and sets a wrong zero)
+        if (!motor_manager_->is_running() || motor_manager_->comm_fault()) {
             throw std::runtime_error("[ArtiH1::home] Motor communication stopped on motor index " + std::to_string(index) + ".");
         }
 
@@ -570,7 +576,8 @@ void robot::ArtiH1::home(uint8_t index) {
 
     while (true) {
         std::this_thread::sleep_for(HOMING_PERIOD);
-        if (!motor_manager_->is_running()) {
+        // homing must not run on stale states (a frozen reading looks like a stall and sets a wrong zero)
+        if (!motor_manager_->is_running() || motor_manager_->comm_fault()) {
             throw std::runtime_error("[ArtiH1::home] Motor communication stopped on motor index " + std::to_string(index) + ".");
         }
 
@@ -667,6 +674,7 @@ void robot::ArtiH1::observation() {
     if (imu_sample != imu_last_sample_) {
         imu_last_sample_ = imu_sample;
         imu_sample_time_ = now;
+        imu_stale_ = false;
     } else if (imu_stale_time_ > 0.0 &&
                std::chrono::duration<double>(now - imu_sample_time_).count() > imu_stale_time_) {
         imu_stale_ = true;
@@ -818,20 +826,64 @@ void robot::ArtiH1::safe_stop(const std::string& reason) {
     throw std::runtime_error("[ArtiH1::control] " + reason);
 }
 
+int robot::ArtiH1::fault_status() const {
+    int status = 0;
+    if (imu_stale_) status |= FAULT_IMU;
+    if (motor_manager_->comm_fault()) status |= FAULT_MOTOR_COMM;
+    if (!joy_handler_->connected()) status |= FAULT_JOY;
+    return status;
+}
+
+void robot::ArtiH1::report_faults(int status) {
+    const int previous = fault_ & ~FAULT_HOLDING;
+    if (status == previous) return;
+    const double t = log_start_ == std::chrono::steady_clock::time_point{} ? 0.0
+                     : std::chrono::duration<double>(std::chrono::steady_clock::now() - log_start_).count();
+    const auto say = [&](int bit, const char* what) {
+        if ((status & bit) && !(previous & bit)) std::cerr << "[ArtiH1] t=" << t << " s FAULT: " << what << std::endl;
+        if (!(status & bit) && (previous & bit)) std::cerr << "[ArtiH1] t=" << t << " s cleared: " << what
+                                                           << " (still holding, restart to walk again)" << std::endl;
+    };
+    say(FAULT_IMU, "IMU samples stopped changing (MTi-3 disconnected?)");
+    say(FAULT_MOTOR_COMM, "motor link (see the [MotorManager] / [UnitreeMaster] messages)");
+    say(FAULT_JOY, "joystick lost");
+    if (log_file_ != nullptr) std::fflush(log_file_);
+}
+
+void robot::ArtiH1::hold_control() {
+    const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - hold_start_).count();
+    const double alpha = fault_settle_time_ > 0.0 ? std::min(1.0, t / fault_settle_time_) : 0.0;
+    for (std::size_t i = 0; i < NUM_JOINTS; ++i) {
+        q_target_[i] = hold_from_[i] + alpha * (default_pose_[i] - hold_from_[i]);
+        const auto motor_index = joint_id_to_motor_index_.at(kinematics_->joint_id(kPolicyJointNames[i]));
+        motor_command_[motor_index].position = q_target_[i];
+        motor_command_[motor_index].kp = policy_kp_[motor_index];
+        motor_command_[motor_index].kd = policy_kd_[motor_index];
+    }
+    motor_manager_->write(motor_command_);
+    if (log_file_ != nullptr) write_log_row();
+}
+
 void robot::ArtiH1::control() {
-    // A master thread that throws ([MotorManager::run] ...) stops every motor thread: the motor states freeze and no
-    // command reaches the motors any more, so never keep running the policy on that data.
-    if (!motor_manager_->is_running()) {
-        safe_stop("Motor communication stopped (see the [MotorManager::run] message above).");
-    }
-    if (imu_stale_) {
-        safe_stop("IMU data stopped changing for " + std::to_string(imu_stale_time_) +
-                  " s (MTi-3 disconnected?), joints damped.");
-    }
-    // real cos(tilt) of the pelvis (= observation_[5] unless --blind-imu)
+    // real cos(tilt) of the pelvis (= observation_[5] unless --blind-imu); a fallen robot is only damped
     if (!observation_.empty() && true_tilt_cos_ < std::cos(max_tilt_)) {
         safe_stop("Pelvis tilt " + std::to_string(std::acos(std::clamp(true_tilt_cos_, -1.0, 1.0)) * 180.0 / PI) +
                   " deg > max_tilt: fallen, joints damped.");
+    }
+    // IMU / motor link / joystick fault: stop the policy and hold the pose, keep running and logging
+    const int status = fault_status();
+    report_faults(status);
+    if (status != 0 && !holding_) {
+        holding_ = true;
+        hold_from_ = q_target_;
+        hold_start_ = std::chrono::steady_clock::now();
+        std::cerr << "[ArtiH1] policy stopped, holding the pose (settle to the default stance over "
+                  << fault_settle_time_ << " s). Ctrl+C to exit." << std::endl;
+    }
+    fault_ = status | (holding_ ? FAULT_HOLDING : 0);
+    if (holding_) {
+        hold_control();
+        return;
     }
     if (!observation_.empty()) {
         // action_ = q_des (rad, policy order): default pose + scaled action + nominal gait at the next clock
