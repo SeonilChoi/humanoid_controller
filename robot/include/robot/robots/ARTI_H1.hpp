@@ -212,6 +212,10 @@ private:
     std::array<double, 12> hold_from_{};             // policy order: joint target when the hold started
     std::chrono::steady_clock::time_point hold_start_{};
     double fault_settle_time_{1.0};
+    // robot.yaml policy.joy_loss_hold (default false): a lost joystick only logs a FAULT and the policy keeps running
+    // on the zero command (stands, walks again once the pad is back); true = hold the pose like an IMU / motor fault.
+    // 11-13: the DualSense dropped every ~10 s over Bluetooth and the latched hold made every run unusable.
+    bool joy_loss_hold_{false};
 
     // Damping only (kp 0) on every joint, then throw: used when the robot falls.
     [[noreturn]] void safe_stop(const std::string& reason);

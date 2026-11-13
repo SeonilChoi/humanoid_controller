@@ -93,6 +93,9 @@ policy:
   # default stance over this many seconds (0 = freeze exactly where it was); the program keeps running and logging
   # (CSV column 'fault': 1 IMU, 2 motor link, 4 joystick, 8 holding) until Ctrl+C. A fall still damps and exits.
   fault_settle_time: 1.0
+  # joystick lost: false = only log it, the policy keeps running on the zero command (stands) and walks again after the
+  # pad reconnects; true = hold the pose like an IMU / motor fault
+  joy_loss_hold: false
   # released stick = exactly the zero command (the policy stands still)
   stick_deadzone: 0.1
   # the velocity env observes the raw command

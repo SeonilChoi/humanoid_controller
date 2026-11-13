@@ -156,11 +156,16 @@ void motor_manager::MotorManager::load(const std::string& config_file) {
 }
 
 bool motor_manager::MotorManager::comm_fault() const {
-    if (comm_error_.load()) return true;
-    for (const auto& kv : masters_) {
-        if (kv.second->comm_lost()) return true;
+    constexpr auto COMM_FAULT_HOLD_TIME = std::chrono::seconds(1);
+    const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+    bool fault = comm_error_.load();
+    for (const auto& kv : masters_) fault = fault || kv.second->comm_lost();
+    if (fault) {
+        last_comm_error_.store(now);
+        return true;
     }
-    return false;
+    const auto last = last_comm_error_.load();
+    return last != 0 && now - last < std::chrono::duration_cast<std::chrono::steady_clock::duration>(COMM_FAULT_HOLD_TIME).count();
 }
 
 void motor_manager::MotorManager::run(uint8_t id) {
@@ -194,6 +199,7 @@ void motor_manager::MotorManager::run(uint8_t id) {
                 comm_error_.store(false);
             } catch (const std::exception& e) {
                 // keep the thread alive: a dead thread can never send the hold command again
+                last_comm_error_.store(std::chrono::steady_clock::now().time_since_epoch().count());
                 if (!comm_error_.exchange(true) || ++error_prints % 60 == 0) {
                     std::cerr << "[MotorManager::run] master " << static_cast<int>(id) << ": " << e.what()
                               << " (link fault, retrying)" << std::endl;

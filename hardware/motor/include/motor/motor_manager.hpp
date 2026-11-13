@@ -69,6 +69,10 @@ private:
 
     std::atomic<bool> comm_error_{false};
 
+    // steady_clock ticks of the last link error (thrown update or a lost motor); comm_fault() stays true for
+    // COMM_FAULT_HOLD_TIME after it so a link that drops every few cycles reads as one fault, not a flicker
+    mutable std::atomic<std::int64_t> last_comm_error_{0};
+
     std::atomic<bool> stopped_{false};
 
     uint8_t number_of_motors_{0};

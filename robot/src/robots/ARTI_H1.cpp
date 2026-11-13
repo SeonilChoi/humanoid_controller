@@ -168,6 +168,7 @@ robot::ArtiH1::ArtiH1(const std::string& config_file, const std::string& model_f
     if (policy["imu_attitude_gain"]) imu_attitude_gain_ = policy["imu_attitude_gain"].as<double>();
     if (policy["imu_stale_time"]) imu_stale_time_ = policy["imu_stale_time"].as<double>();
     if (policy["fault_settle_time"]) fault_settle_time_ = policy["fault_settle_time"].as<double>();
+    if (policy["joy_loss_hold"]) joy_loss_hold_ = policy["joy_loss_hold"].as<bool>();
     if (policy["gait_rest_phases"]) gait_rest_phases_ = policy["gait_rest_phases"].as<std::vector<double>>();
     if (policy["stand_command_threshold"]) stand_command_threshold_ = policy["stand_command_threshold"].as<double>();
     if (policy["stick_deadzone"]) stick_deadzone_ = policy["stick_deadzone"].as<double>();
@@ -842,11 +843,12 @@ void robot::ArtiH1::report_faults(int status) {
     const auto say = [&](int bit, const char* what) {
         if ((status & bit) && !(previous & bit)) std::cerr << "[ArtiH1] t=" << t << " s FAULT: " << what << std::endl;
         if (!(status & bit) && (previous & bit)) std::cerr << "[ArtiH1] t=" << t << " s cleared: " << what
-                                                           << " (still holding, restart to walk again)" << std::endl;
+                                                           << (holding_ ? " (still holding, restart to walk again)" : "")
+                                                           << std::endl;
     };
     say(FAULT_IMU, "IMU samples stopped changing (MTi-3 disconnected?)");
     say(FAULT_MOTOR_COMM, "motor link (see the [MotorManager] / [UnitreeMaster] messages)");
-    say(FAULT_JOY, "joystick lost");
+    say(FAULT_JOY, joy_loss_hold_ ? "joystick lost" : "joystick lost (zero command: the policy stands until the pad is back)");
     if (log_file_ != nullptr) std::fflush(log_file_);
 }
 
@@ -873,7 +875,8 @@ void robot::ArtiH1::control() {
     // IMU / motor link / joystick fault: stop the policy and hold the pose, keep running and logging
     const int status = fault_status();
     report_faults(status);
-    if (status != 0 && !holding_) {
+    const int hold_mask = FAULT_IMU | FAULT_MOTOR_COMM | (joy_loss_hold_ ? FAULT_JOY : 0);
+    if ((status & hold_mask) != 0 && !holding_) {
         holding_ = true;
         hold_from_ = q_target_;
         hold_start_ = std::chrono::steady_clock::now();
