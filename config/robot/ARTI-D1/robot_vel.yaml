@@ -7,12 +7,13 @@ urdf_file: ../config/robot/ARTI-D1/robot.urdf
 # Velocity-walk policy (arti_d1 Template-Arti-D1-Vel-Direct-v0, microduck_rl port). Export:
 #   python scripts/vel/pt_to_onnx_vel.py --checkpoint <run>/checkpoints/agent_N.pt --output agent_vel.onnx
 # Check in sim: python scripts/vel/eval_vel.py --mode score --checkpoint agent_vel.onnx
-# agent_vel.onnx = arti_d1 v23 run 2026-11-12_20-45-12 agent_54000 (ARTI_D1_VEL_PROFILE=v23): v20 + real2sim gyro
-# model (policy sees gyro + k * highpass_3Hz(gyro), k 0.5-3.0 per episode; real IMU/frame shows ~2.4x the 7-13 Hz
-# trunk rotation of sim, which drove the v20 ~10 Hz standing buzz) + air time weight 4. Same obs / action / gains as
-# v12 / v20. Sim, ONNX closed loop: 0/64 falls, fwd .078 / back -.053 / side .023 m/s, turn .281 rad/s, 4.5 steps/s,
-# both feet down 0 %, foot 15 mm; standpush with k=2.5: 0/32 falls, gyro std .02-.04 rad/s (v20: 1.1-1.2, 8/32
-# falls). Previous: v20 agent_84000 (commit 576059d), v12 agent_42000 (commit 27e44cc).
+# agent_vel.onnx = arti_d1 v25 run 2026-11-13_09-38-58 agent_36000 (ARTI_D1_VEL_PROFILE=v25): v23 + flat-sole default
+# pose (hip_roll +/-0.15 = legs vertical; the old -/+0.0247 stance stood each sole 10 deg on its edge, the likely cause
+# of the real 3.5 Hz roll / yaw rocking while stepping). Feet 0.202 m apart (was 0.136). default_pose below changed
+# with it. Sim, ONNX: 0/64 falls, fwd .054 / back -.061 / side .006 m/s, turn .266 rad/s, 4.9 steps/s, foot 15 mm,
+# both feet down 1 %; standpush 0/32; gyro HF k=2.5: 0/32, gyro std .02-.03. Walking q_des hip_roll is clamped at the
+# 0.209 limit ~50 % of the time (joint itself <= 0.19). Previous: v23 agent_54000 (commit dd14e1c), v20 agent_84000
+# (576059d), v12 agent_42000 (27e44cc).
 model_file: ../config/robot/ARTI-D1/agent_vel.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
@@ -99,4 +100,4 @@ policy:
     right_arm_m8crank_plate: 0.0
   # Training default pose (params/env.yaml init_state.joint_pos, arms = arm_hold_target 0), motor order. The leg
   # observation is q - default_pose; the policy starts here.
-  default_pose: [0.0, 0.0, 0.0, 0.0, 0.0, -0.02466, 0.0, 0.02466, -0.00293, -0.00293, 0.07136, 0.07136, -0.06844, -0.06844]
+  default_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.15, 0.0, -0.15, -0.00293, -0.00293, 0.07136, 0.07136, -0.06844, -0.06844]
