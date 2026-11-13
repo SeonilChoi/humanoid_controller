@@ -87,9 +87,8 @@ policy:
   # the joystick disconnects the command is zero until it is back. "" = no dead-man button.
   deadman_button: l1
   # Command at full stick (vx m/s, vy m/s, yaw rate rad/s). Training ranges: vx -0.12 .. 0.15, vy +-0.08, yaw +-0.4.
-  # vy enabled 2026-11-13 (was 0 for the first tests). Sideways is weak in sim: v25 36k tracks vy .006-.008 at a .06
-  # command (v23 .023), so expect a slow drift; full stick .08 = the training range. Yaw 0.3 (sim .27-.29).
-  command_max: [0.10, 0.08, 0.3]
+  # No sideways (user 2026-11-13: forward / back / turn only; v26+ trains vy = 0). Yaw 0.3 (sim .27-.29).
+  command_max: [0.10, 0.0, 0.3]
   # Start: measured pose -> home_pose (1 s) -> default_pose -> wait -> policy. home_pose = the real servo zero.
   home_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.15, 0.0, -0.15, -0.632508, -0.632508, 1.373575, 1.373575, -0.741067, -0.741067]
   # Arms ignore q_des and hold 0 (= the training arm_hold_target).
