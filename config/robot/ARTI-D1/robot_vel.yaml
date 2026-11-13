@@ -7,13 +7,13 @@ urdf_file: ../config/robot/ARTI-D1/robot.urdf
 # Velocity-walk policy (arti_d1 Template-Arti-D1-Vel-Direct-v0, microduck_rl port). Export:
 #   python scripts/vel/pt_to_onnx_vel.py --checkpoint <run>/checkpoints/agent_N.pt --output agent_vel.onnx
 # Check in sim: python scripts/vel/eval_vel.py --mode score --checkpoint agent_vel.onnx
-# agent_vel.onnx = arti_d1 v27 run 2026-11-13_13-55-28 agent_60000 (ARTI_D1_VEL_PROFILE=v27): v25 flat-sole stance
-# (hip_roll +/-0.15, feet 0.202 m apart) trained against the real2sim fit of the v25 real walk: leg servo kd x U(0.65, 1.0)
-# (replay: real joint response = kd x0.7) and a 3-6 Hz trunk shake torque U(0, 6) Nm (the real roll / yaw rocking).
-# No sideways (command_max vy 0). Sim, ONNX, real-repro condition (kd x0.7 + shake 8 Nm): 0/64 falls (v25 6/64),
-# fwd .045 / back -.052 m/s, turn .216 rad/s, gyro std .58/.31/.58. Nominal: 0/64, fwd .050 / back -.040, turn .19,
-# 4.9 steps/s, foot 13 mm; standpush 0/32; gyro HF k=2.5: 0/32. Walking q_des hip_roll clamped at 0.209 ~40-55 %.
-# Previous: v25 agent_36000 (ac4e741), v23 agent_54000 (dd14e1c), v20 agent_84000 (576059d), v12 agent_42000 (27e44cc).
+# agent_vel.onnx = arti_d1 v30 run 2026-11-13_22-52-08 agent_60000 (ARTI_D1_VEL_PROFILE=v30): v27 (flat-sole stance
+# hip_roll +/-0.15, leg kd x U(0.65, 1.0), trunk shake U(0, 6) Nm) + per-env hip_yaw encoder bias U(+-0.10) rad. Real v27 60k
+# spun clockwise at .4-.5 rad/s while walking whatever the command (log 161844); sim reproduces it with both hip_yaw zeros
+# ~0.06-0.08 rad off in the same direction. Sim, ONNX, kd x0.7 + shake 8 Nm + hip_yaw offset +0.08: 1/64 falls, fwd .052
+# wz -.011, back -.044 wz -.009, turn .207 (v27 60k: wz -.30 / -.35, turn -.08); offset -0.08: wz +.03, turn .275.
+# Nominal: 1/64, fwd .051 / back -.037, turn .203; standpush 0/32; gyro HF k=2.5: 0/32. No sideways (command_max vy 0).
+# Previous: v27 agent_60000 (1b9a549), v25 agent_36000 (ac4e741), v23 agent_54000 (dd14e1c), v20 agent_84000 (576059d).
 model_file: ../config/robot/ARTI-D1/agent_vel.onnx
 # Per-control-step CSV (observation, ONNX q_des / actions, motor states, raw IMU) written to
 # <log_file>_YYYYmmdd_HHMMSS.csv; empty string disables it. Send this file when a real run misbehaves.
